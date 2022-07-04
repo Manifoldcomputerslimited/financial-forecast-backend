@@ -6,7 +6,7 @@ const app = require("fastify")({
 
 // Declare a route
 app.get("/", async (request, reply) => {
-  return { hello: "world" };
+  return { hello: "Welcome to Manifold API" };
 });
 
 // Run the server!

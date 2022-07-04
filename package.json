@@ -1,0 +1,22 @@
+{
+  "name": "manifold-financial-forecast",
+  "version": "1.0.0",
+  "description": "an application for predictive cash flow within a given period",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/manifoldcomputers/financial-forecast.git"
+  },
+  "author": "Liassidji Abiodun Manasseh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/manifoldcomputers/financial-forecast/issues"
+  },
+  "homepage": "https://github.com/manifoldcomputers/financial-forecast#readme",
+  "dependencies": {
+    "fastify": "^4.2.0"
+  }
+}

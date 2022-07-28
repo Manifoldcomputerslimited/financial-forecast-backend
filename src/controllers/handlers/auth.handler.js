@@ -2,6 +2,7 @@ let CryptoJS = require("crypto-js");
 const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require('uuid');
 const { sendEmail } = require('../../helpers/email');
+const { generateTokens } = require("../auth/generateToken");
 
 const db = require("../../models");
 const User = db.users;
@@ -67,7 +68,58 @@ const inviteUserHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
+/**
+ * login a user
+ * @param {string} email - the email of the user.
+ * @param {string} password - the password of the user.
+ * @returns {object} - information about the user.
+ */
 const loginUserHandler = async (req, reply) => {
+    const { email, password } = req.body;
+    const status = true;
+
+    try {
+        // check if email exists
+        let user = await findUserByEmail(email, status);
+
+        if (!user)
+            return reply.code(409).send({
+                status: false,
+                message: "Invalid email or password",
+            });
+
+        // check if password matches
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch)
+            return reply.code(409).send({
+                status: false,
+                message: "Invalid email or password",
+            });
+
+        // generate tokens
+        const { accessToken, refreshToken } = await generateTokens(user);
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "User logged in successfully",
+            data: {
+                accessToken,
+                refreshToken,
+            },
+        };
+
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+
+    return reply.status(statusCode).send(result);
 }
 
 /**

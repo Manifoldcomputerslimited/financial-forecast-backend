@@ -1,12 +1,13 @@
 let CryptoJS = require("crypto-js");
+const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require('uuid');
 const { sendEmail } = require('../../helpers/email');
 
 const db = require("../../models");
 const User = db.users;
 
-async function findUserByEmail(email) {
-    return await User.findOne({ where: { email }, raw: true });
+async function findUserByEmail(email, status) {
+    return await User.findOne({ where: { email, status }, raw: true });
 }
 
 /**
@@ -15,11 +16,12 @@ async function findUserByEmail(email) {
  * @returns {object} - information about the user.
  */
 const inviteUserHandler = async (req, reply) => {
-    const { email } = req.body;
+    const { email } = req.body
+    const status = false
 
     try {
-        // check if email doesn't already exist
-        let userExists = await findUserByEmail(email);
+        // check if email doesn't already exist and status is false
+        let userExists = await findUserByEmail(email, status)
 
         if (userExists)
             return reply.code(409).send({
@@ -32,23 +34,22 @@ const inviteUserHandler = async (req, reply) => {
         let ciphertext = CryptoJS.AES.encrypt(token, 'ManifoldSecret').toString();
 
         // store the data in the database
-        const user = await User.create({
+        await User.create({
             email,
-            token: ciphertext,
+            inviteToken: token,
             inviteDate: new Date(),
         });
 
         const details = {
             name: 'Manny',
             templateToUse: "invite",
-            url: `http://localhost:3000/update/${user.token}`,
+            url: `http://localhost:3000/update/${ciphertext}`,
         }
 
         // invite user by sending an email
         await sendEmail(email, "Manifold Forecast Invite", "Please click the link below to complete registration", details);
 
-        if (emailResponse)
-        statusCode = 201;
+        statusCode = 200;
 
         result = {
             status: true,
@@ -66,26 +67,76 @@ const inviteUserHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
-const loginHandler = async (req, reply) => {
+const loginUserHandler = async (req, reply) => {
 }
 
-const registerHandler = async (req, reply) => {
-    const { firstName, lastName, email, password, token } = req.body;
+/**
+ * register a user
+ * @param {string} firstName - the first name of the user.
+ * @param {string} lastName - the last name of the user.
+ * @param {string} email - the email of the user.
+ * @param {string} password - the password of the user.
+ * @param {object} inviteToken - the token generated when an invite is sent to a user.
+ * @returns {object} - information about the user.
+ */
+const registerUserHandler = async (req, reply) => {
+    const { firstName, lastName, email, password, inviteToken } = req.body;
 
     try {
+        // decrypt the invitation token
+        let bytes = CryptoJS.AES.decrypt(inviteToken, 'ManifoldSecret');
+        let originalText = bytes.toString(CryptoJS.enc.Utf8);
 
-        var bytes = CryptoJS.AES.decrypt(ciphertext, 'ManifoldSecret');
-        var originalText = bytes.toString(CryptoJS.enc.Utf8);
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        console.log(originalText);
+        // check if email and token match the database
+        let user = await User.findOne({ where: { email, inviteToken: originalText } });
 
-    } catch (error) {
+        if (!user)
+            return reply.code(409).send({
+                status: false,
+                message: "Invalid email or token",
+            });
 
+        // update the user's status to true
+        await User.update({
+            firstName,
+            lastName,
+            status: true,
+            password: hashedPassword,
+        }, { where: { email } });
+
+        // send an email to the user to notify them of their registration
+        const details = {
+            name: `${firstName} ${lastName}`,
+            templateToUse: "signup",
+            url: `http://localhost:3000/`,
+        }
+
+        await sendEmail(email, "Manifold Forecast Signup", "Registration completed", details);
+
+        statusCode = 201;
+
+        result = {
+            status: true,
+            message: "User registered successfully",
+        };
+
+
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
     }
+
+    return reply.status(statusCode).send(result);
 }
 
 module.exports = {
     inviteUserHandler,
-    loginHandler,
-    registerHandler
+    loginUserHandler,
+    registerUserHandler
 }

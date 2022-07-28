@@ -7,6 +7,8 @@ const inviteUserOpts = {
 }
 
 const registerUserOpts = {
+    schema: authSchema.registerUserOpts,
+    handler: authController.registerUserHandler,
 }
 
 const loginUserOpts = {
@@ -18,6 +20,9 @@ const resetPasswordOpts = {
 const authRoutes = async (fastify, options) => {
     // invite a new user
     fastify.post('/invite', inviteUserOpts);
+
+    // register a new user
+    fastify.post('/register', registerUserOpts);
 }
 
 module.exports = authRoutes;

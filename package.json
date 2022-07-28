@@ -17,6 +17,17 @@
   },
   "homepage": "https://github.com/manifoldcomputers/financial-forecast#readme",
   "dependencies": {
-    "fastify": "^4.2.0"
+    "@fastify/cors": "^8.0.0",
+    "@fastify/formbody": "^7.0.1",
+    "crypto-js": "^4.1.1",
+    "dotenv": "^16.0.1",
+    "fastify": "^4.2.0",
+    "fastify-axios": "^1.2.5",
+    "handlebars": "^4.7.7",
+    "mysql2": "^2.3.3",
+    "nodemailer": "^6.7.7",
+    "nodemon": "^2.0.19",
+    "sequelize": "^6.21.3",
+    "uuid": "^8.3.2"
   }
 }

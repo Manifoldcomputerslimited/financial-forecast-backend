@@ -12,6 +12,8 @@ const registerUserOpts = {
 }
 
 const loginUserOpts = {
+    schema: authSchema.loginUserOpts,
+    handler: authController.loginUserHandler,
 }
 
 const resetPasswordOpts = {
@@ -23,6 +25,9 @@ const authRoutes = async (fastify, options) => {
 
     // register a new user
     fastify.post('/register', registerUserOpts);
+
+    // login a user
+    fastify.post('/login', loginUserOpts);
 }
 
 module.exports = authRoutes;

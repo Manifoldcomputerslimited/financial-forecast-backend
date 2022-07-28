@@ -62,4 +62,31 @@ const registerUserOpts = {
     logLevel: "debug",
 }
 
-module.exports = { inviteUserOpts, registerUserOpts };
+const loginUserOpts = {
+    tags: ["Authentication"],
+    description: "Login a user to the application",
+    body: {
+        required: ["email", "password"],
+        type: "object",
+        properties: {
+            email: {
+                type: "string",
+                format: "email",
+                description: "The email of the user"
+            },
+            password: {
+                type: "string",
+                description: "The password of the user"
+            },
+        }
+    },
+    response: {
+        200: status.success,
+        204: status.noConent,
+        400: status.badRequest,
+        500: status.internalServer,
+    },
+    logLevel: "debug",
+}
+
+module.exports = { inviteUserOpts, registerUserOpts, loginUserOpts };

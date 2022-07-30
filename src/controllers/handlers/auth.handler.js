@@ -83,7 +83,7 @@ const loginUserHandler = async (req, reply) => {
         let user = await findUserByEmail(email, status);
 
         if (!user)
-            return reply.code(409).send({
+            return reply.code(500).send({
                 status: false,
                 message: "Invalid email or password",
             });

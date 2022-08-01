@@ -3,7 +3,13 @@ const db = require("../../models");
 const User = db.users;
 
 const generateTokens = async (user) => {
-  let payload = user;
+  let refreshToken = user.token;
+  delete user.token;
+  let payload = {
+    ...user
+  };
+
+
   try {
     const accessToken = jwt.sign(
       payload,
@@ -13,17 +19,18 @@ const generateTokens = async (user) => {
       }
     );
 
-    const refreshToken = jwt.sign(
-      payload,
-      process.env.REFRESH_TOKEN_PRIVATE_KEY,
-      {
-        expiresIn: "30d",
-      }
-    );
+    if (refreshToken === null) {
+      refreshToken = jwt.sign(
+        payload,
+        process.env.REFRESH_TOKEN_PRIVATE_KEY,
+        {
+          expiresIn: "30d",
+        }
+      );
+      const user = await User.findOne({ where: { email: payload.email } });
 
-    const user = await User.findOne({ id: payload.id });
-
-    await user.update({ token: refreshToken });
+      await user.update({ token: refreshToken });
+    }
 
     return Promise.resolve({ accessToken, refreshToken });
   } catch (e) {

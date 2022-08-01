@@ -30,6 +30,7 @@ const db = require("./src/models");
 db.sequelize.sync();
 
 app.register(require("./src/routes/auth.routes.js"), { prefix: "v1" });
+app.register(require("./src/routes/zoho.routes.js"), { prefix: "v1" });
 
 // Declare a route
 app.register(
@@ -45,7 +46,7 @@ app.register(
 // Run the server!
 const start = async () => {
   try {
-    await app.listen({ port: 3000 });
+    await app.listen({ port: 4000 });
   } catch (err) {
     app.log.error(err);
     process.exit(1);

@@ -19,6 +19,7 @@
   "dependencies": {
     "@fastify/cors": "^8.0.0",
     "@fastify/formbody": "^7.0.1",
+    "axios": "^0.27.2",
     "bcrypt": "^5.0.1",
     "crypto-js": "^4.1.1",
     "dotenv": "^16.0.1",

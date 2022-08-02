@@ -15,7 +15,7 @@ const generateTokens = async (user) => {
       payload,
       process.env.ACCESS_TOKEN_PRIVATE_KEY,
       {
-        expiresIn: "50m",
+        expiresIn: "1m",
       }
     );
 
@@ -24,7 +24,7 @@ const generateTokens = async (user) => {
         payload,
         process.env.REFRESH_TOKEN_PRIVATE_KEY,
         {
-          expiresIn: "30d",
+          expiresIn: "120d",
         }
       );
       const user = await User.findOne({ where: { email: payload.email } });

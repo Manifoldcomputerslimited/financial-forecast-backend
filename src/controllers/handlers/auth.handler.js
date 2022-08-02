@@ -1,8 +1,10 @@
 let CryptoJS = require("crypto-js");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require('uuid');
 const { sendEmail } = require('../../helpers/email');
 const { generateTokens } = require("../auth/generateToken");
+const { verifyRefreshToken } = require("../auth/verifyRefreshToken");
 
 const db = require("../../models");
 const User = db.users;
@@ -146,7 +148,7 @@ const registerUserHandler = async (req, reply) => {
         let user = await User.findOne({ where: { email, inviteToken: originalText } });
 
         if (!user)
-            return reply.code(409).send({
+            return reply.code(401).send({
                 status: false,
                 message: "Invalid email or token",
             });
@@ -187,8 +189,58 @@ const registerUserHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
+// A user who wants to refresh token
+const refreshTokenHandler = async (req, reply) => {
+    try {
+        const { refreshToken } = req.body;
+        const { tokenDetails } = await verifyRefreshToken(refreshToken, reply);
+
+        if (!tokenDetails) {
+            return reply.code(401).send({
+                status: false,
+                message: "Invalid email or password",
+            });
+        }
+
+        delete tokenDetails.exp;
+        delete tokenDetails.iat;
+
+        const accessToken = jwt.sign(
+            tokenDetails,
+            process.env.ACCESS_TOKEN_PRIVATE_KEY,
+            { expiresIn: "1m" }
+        );
+
+        statusCode = 200;
+
+        // return all information about the user
+        result = {
+            status: true,
+            message: "Access token created successfully",
+            data: {
+                accessToken,
+            },
+        };
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+
+    return reply.status(statusCode).send(result);
+};
+
+const getUserHandler = async (req, reply) => {
+
+
+}
+
 module.exports = {
     inviteUserHandler,
     loginUserHandler,
-    registerUserHandler
+    registerUserHandler,
+    getUserHandler,
+    refreshTokenHandler
 }

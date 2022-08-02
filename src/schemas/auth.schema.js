@@ -89,4 +89,37 @@ const loginUserOpts = {
     logLevel: "debug",
 }
 
-module.exports = { inviteUserOpts, registerUserOpts, loginUserOpts };
+const refreshTokenOpts = {
+    tags: ["Authentication"],
+    description: "A user who wants to refresh token",
+    body: {
+        required: ["refreshToken"],
+        type: "object",
+        properties: {
+            refreshToken: {
+                type: "string",
+                description: "Token",
+            },
+        },
+    },
+    response: {
+        200: status.success,
+        204: status.noConent,
+        400: status.badRequest,
+        500: status.internalServer,
+    },
+    logLevel: "debug",
+};
+
+const getUserOpts = {
+    tags: ["Authentication"],
+    description: "Get the user information",
+    response: {
+        200: status.success,
+        204: status.noConent,
+        400: status.badRequest,
+        500: status.internalServer,
+    },
+}
+
+module.exports = { inviteUserOpts, registerUserOpts, loginUserOpts, refreshTokenOpts, getUserOpts };

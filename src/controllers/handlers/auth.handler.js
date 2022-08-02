@@ -60,6 +60,7 @@ const inviteUserHandler = async (req, reply) => {
         };
 
     } catch (e) {
+        console.log(e)
         statusCode = e.code;
         result = {
             status: false,
@@ -103,13 +104,15 @@ const loginUserHandler = async (req, reply) => {
         const { accessToken, refreshToken } = await generateTokens(user);
 
         statusCode = 200;
-
+        console.log('accessToken', accessToken)
+        console.log('refreshToken', refreshToken)
         result = {
             status: true,
             message: "User logged in successfully",
             data: {
                 accessToken,
                 refreshToken,
+                isZohoAuthenticated: user.isZohoAuthenticated
             },
         };
 
@@ -208,7 +211,7 @@ const refreshTokenHandler = async (req, reply) => {
         const accessToken = jwt.sign(
             tokenDetails,
             process.env.ACCESS_TOKEN_PRIVATE_KEY,
-            { expiresIn: "1m" }
+            { expiresIn: "30m" }
         );
 
         statusCode = 200;

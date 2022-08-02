@@ -5,6 +5,10 @@ const generateZohoTokenOpts = {
     handler: zohoController.generateZohoTokenHandler,
 }
 
+const refreshZohoTokenOpts = {
+    handler: zohoController.refreshZohoTokenHandler,
+}
+
 
 const zohoRoutes = async (fastify, options) => {
     fastify.register(require("@fastify/auth"))
@@ -16,6 +20,12 @@ const privateRoutes = async (fastify, options) => {
     fastify.post('/zoho/token/generate', {
         preHandler: fastify.auth([verifyToken]),
         ...generateZohoTokenOpts
+    });
+
+    // refresh a zoho token
+    fastify.get('/zoho/token/refresh', {
+        preHandler: fastify.auth([verifyToken]),
+        ...refreshZohoTokenOpts,
     });
 }
 

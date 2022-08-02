@@ -35,6 +35,10 @@ module.exports = (sequelize, DataTypes) => {
         inviteDate: {
             type: DataTypes.DATE,
             defaultValue: DataTypes.NOW,
+        },
+        isZohoAuthenticated: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
         }
     });
 

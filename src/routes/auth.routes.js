@@ -1,5 +1,6 @@
 const authController = require('../controllers/handlers/auth.handler');
 const authSchema = require('../schemas/auth.schema');
+const verifyToken = require("../controllers/auth/verifyToken");
 
 const inviteUserOpts = {
     schema: authSchema.inviteUserOpts,
@@ -16,6 +17,17 @@ const loginUserOpts = {
     handler: authController.loginUserHandler,
 }
 
+const getUserOpts = {
+    schema: authSchema.getUserOpts,
+    handler: authController.getUserHandler,
+};
+
+const refreshTokenOpts = {
+    schema: authSchema.refreshTokenOpts,
+    handler: authController.refreshTokenHandler,
+};
+
+
 const resetPasswordOpts = {
 }
 
@@ -28,6 +40,21 @@ const authRoutes = async (fastify, options) => {
 
     // login a user
     fastify.post('/login', loginUserOpts);
+
+    // refresh token
+    fastify.post('/token/refresh', refreshTokenOpts);
+
+    fastify.register(require("@fastify/auth"))
+        .after(() => privateRoutes(fastify))
+}
+
+
+const privateRoutes = async (fastify, options) => {
+    // view my profile
+    fastify.get('/profile', {
+        preHandler: fastify.auth([verifyToken]),
+        ...getUserOpts,
+    });
 }
 
 module.exports = authRoutes;

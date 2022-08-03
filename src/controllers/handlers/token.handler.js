@@ -81,9 +81,7 @@ const generateZohoTokenHandler = async (req, reply) => {
                 zohoTokenDate: new Date().addHours(1)
             });
             console.log('updating user')
-            user.update({
-                isZohoAuthenticated: true
-            })
+           
         } else {
             console.log('refreshing user')
             url = `${process.env.ZOHO_BASE_URL}?refresh_token=${zohoToken.zohoRefreshToken}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&redirect_uri=${process.env.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
@@ -104,8 +102,9 @@ const generateZohoTokenHandler = async (req, reply) => {
                 zohoTokenDate: new Date().addHours(1)
             })
         }
-        console.log(user)
-        console.log('outside', zohoToken)
+        user.update({
+            isZohoAuthenticated: true
+        })
 
         statusCode = 200;
         result = {

@@ -112,7 +112,7 @@ const loginUserHandler = async (req, reply) => {
             data: {
                 accessToken,
                 refreshToken,
-                isZohoAuthenticated: user.isZohoAuthenticated
+                isZohoAuthenticated: user.isZohoAuthenticated ? true : false
             },
         };
 
@@ -211,7 +211,7 @@ const refreshTokenHandler = async (req, reply) => {
         const accessToken = jwt.sign(
             tokenDetails,
             process.env.ACCESS_TOKEN_PRIVATE_KEY,
-            { expiresIn: "30m" }
+            { expiresIn: "1m" }
         );
 
         statusCode = 200;

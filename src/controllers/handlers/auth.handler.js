@@ -95,7 +95,7 @@ const loginUserHandler = async (req, reply) => {
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch)
-            return reply.code(409).send({
+            return reply.code(401).send({
                 status: false,
                 message: "Invalid email or password",
             });
@@ -211,7 +211,7 @@ const refreshTokenHandler = async (req, reply) => {
         const accessToken = jwt.sign(
             tokenDetails,
             process.env.ACCESS_TOKEN_PRIVATE_KEY,
-            { expiresIn: "1m" }
+            { expiresIn: "1d" }
         );
 
         statusCode = 200;
@@ -240,10 +240,56 @@ const getUserHandler = async (req, reply) => {
 
 }
 
+const resetPasswordHandler = async (req, reply) => {
+    try {
+        const { currentPassword, newPassword } = req.body
+        const { id } = req.user
+
+        const user = await User.findOne({ where: { id } })
+
+        if (!user)
+            reply.code(404).send({
+                status: false,
+                message: "User not found"
+            })
+
+        // check if the current password is correct
+        const isMatch = await bcrypt.compare(currentPassword, user.password)
+
+        if (!isMatch) reply.code(400).send({
+            status: false,
+            message: "Your current password does not match the old password",
+        });
+
+        // hash the new password
+        const encryptedPassword = await bcrypt.hash(newPassword, 10);
+
+        // update the password
+        await user.update({ password: encryptedPassword });
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "Password reset successfully",
+            data: null,
+        };
+
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+    return reply.status(statusCode).send(result);
+}
+
 module.exports = {
     inviteUserHandler,
     loginUserHandler,
     registerUserHandler,
     getUserHandler,
-    refreshTokenHandler
+    refreshTokenHandler,
+    resetPasswordHandler
 }

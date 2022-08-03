@@ -27,9 +27,11 @@ const refreshTokenOpts = {
     handler: authController.refreshTokenHandler,
 };
 
-
 const resetPasswordOpts = {
+    schema: authSchema.resetPasswordOpts,
+    handler: authController.resetPasswordHandler,
 }
+
 
 const authRoutes = async (fastify, options) => {
     // invite a new user
@@ -55,6 +57,12 @@ const privateRoutes = async (fastify, options) => {
         preHandler: fastify.auth([verifyToken]),
         ...getUserOpts,
     });
+
+    // reset password
+    fastify.post("/password/reset", {
+        preHandler: fastify.auth([verifyToken]),
+        ...resetPasswordOpts
+    })
 }
 
 module.exports = authRoutes;

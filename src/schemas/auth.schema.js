@@ -122,4 +122,35 @@ const getUserOpts = {
     },
 }
 
-module.exports = { inviteUserOpts, registerUserOpts, loginUserOpts, refreshTokenOpts, getUserOpts };
+const resetPasswordOpts = {
+    tags: ["Authentication"],
+    description: "User who wants to change password",
+    body: {
+        required: ["currentPassword", "newPassword"],
+        type: "object",
+        properties: {
+            currentPassword: {
+                type: "string",
+                description: "Current Password",
+            },
+            newPassword: {
+                type: "string",
+                description: "New Password",
+            },
+        },
+    },
+    response: {
+        200: status.success,
+        204: status.noConent,
+        400: status.badRequest,
+        500: status.internalServer,
+    },
+    security: [
+        {
+            apiKey: [],
+        },
+    ],
+    logLevel: "debug",
+};
+
+module.exports = { inviteUserOpts, registerUserOpts, loginUserOpts, refreshTokenOpts, getUserOpts, resetPasswordOpts };

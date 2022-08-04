@@ -15,7 +15,7 @@ const generateTokens = async (user) => {
       payload,
       process.env.ACCESS_TOKEN_PRIVATE_KEY,
       {
-        expiresIn: "30m",
+        expiresIn: "1d",
       }
     );
 

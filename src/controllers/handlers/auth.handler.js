@@ -34,8 +34,10 @@ const inviteUserHandler = async (req, reply) => {
 
         // generate a unique token for the user
         let token = uuidv4();       
-        let ciphertext = CryptoJS.HmacSHA1(token, 'ManifoldSecret').toString();
+        let ciphertext = CryptoJS.AES.encrypt(token, 'ManifoldSecret').toString();
 
+        // remove special characters to the token
+        let updatedCipherText = ciphertext.toString().replaceAll('+','xMl3Jk').replaceAll('/','Por21Ld').replaceAll('=','Ml32');
 
         // store the data in the database
         await User.create({
@@ -47,7 +49,7 @@ const inviteUserHandler = async (req, reply) => {
         const details = {
             name: 'Manny',
             templateToUse: "invite",
-            url: `http://localhost:3000/register/${ciphertext}`,
+            url: `http://localhost:3000/register/${updatedCipherText}`,
         }
 
         // invite user by sending an email
@@ -61,7 +63,6 @@ const inviteUserHandler = async (req, reply) => {
         };
 
     } catch (e) {
-        console.log(e)
         statusCode = e.code;
         result = {
             status: false,
@@ -105,8 +106,7 @@ const loginUserHandler = async (req, reply) => {
         const { accessToken, refreshToken } = await generateTokens(user);
 
         statusCode = 200;
-        console.log('accessToken', accessToken)
-        console.log('refreshToken', refreshToken)
+
         result = {
             status: true,
             message: "User logged in successfully",
@@ -141,8 +141,11 @@ const registerUserHandler = async (req, reply) => {
     const { firstName, lastName, email, password, inviteToken } = req.body;
 
     try {
+        // add special characters to the token
+        let updatedToken = inviteToken.toString().replaceAll('xMl3Jk', '+' ).replaceAll('Por21Ld', '/').replaceAll('Ml32', '=');
+ 
         // decrypt the invitation token
-        let bytes = CryptoJS.AES.decrypt(inviteToken, 'ManifoldSecret');
+        let bytes = CryptoJS.AES.decrypt(updatedToken, 'ManifoldSecret');
         let originalText = bytes.toString(CryptoJS.enc.Utf8);
 
         // Hash the password

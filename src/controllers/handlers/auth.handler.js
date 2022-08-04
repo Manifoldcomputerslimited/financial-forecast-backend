@@ -33,8 +33,9 @@ const inviteUserHandler = async (req, reply) => {
             });
 
         // generate a unique token for the user
-        let token = uuidv4();
-        let ciphertext = CryptoJS.AES.encrypt(token, 'ManifoldSecret').toString();
+        let token = uuidv4();       
+        let ciphertext = CryptoJS.HmacSHA1(token, 'ManifoldSecret').toString();
+
 
         // store the data in the database
         await User.create({
@@ -46,7 +47,7 @@ const inviteUserHandler = async (req, reply) => {
         const details = {
             name: 'Manny',
             templateToUse: "invite",
-            url: `http://localhost:3000/update/${ciphertext}`,
+            url: `http://localhost:3000/register/${ciphertext}`,
         }
 
         // invite user by sending an email

@@ -27,9 +27,9 @@ const refreshTokenOpts = {
     handler: authController.refreshTokenHandler,
 };
 
-const resetPasswordOpts = {
-    schema: authSchema.resetPasswordOpts,
-    handler: authController.resetPasswordHandler,
+const updatePasswordOpts = {
+    schema: authSchema.updatePasswordOpts,
+    handler: authController.updatePasswordHandler,
 }
 
 
@@ -58,10 +58,10 @@ const privateRoutes = async (fastify, options) => {
         ...getUserOpts,
     });
 
-    // reset password
-    fastify.post("/password/reset", {
+    // update user password
+    fastify.post("/password/update", {
         preHandler: fastify.auth([verifyToken]),
-        ...resetPasswordOpts
+        ...updatePasswordOpts
     })
 }
 

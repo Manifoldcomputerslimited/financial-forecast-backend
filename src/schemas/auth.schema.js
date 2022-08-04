@@ -122,7 +122,7 @@ const getUserOpts = {
     },
 }
 
-const resetPasswordOpts = {
+const updatePasswordOpts = {
     tags: ["Authentication"],
     description: "User who wants to change password",
     body: {
@@ -153,4 +153,4 @@ const resetPasswordOpts = {
     logLevel: "debug",
 };
 
-module.exports = { inviteUserOpts, registerUserOpts, loginUserOpts, refreshTokenOpts, getUserOpts, resetPasswordOpts };
+module.exports = { inviteUserOpts, registerUserOpts, loginUserOpts, refreshTokenOpts, getUserOpts, updatePasswordOpts };

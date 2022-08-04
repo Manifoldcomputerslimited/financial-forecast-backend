@@ -33,11 +33,11 @@ const inviteUserHandler = async (req, reply) => {
             });
 
         // generate a unique token for the user
-        let token = uuidv4();       
+        let token = uuidv4();
         let ciphertext = CryptoJS.AES.encrypt(token, 'ManifoldSecret').toString();
 
         // remove special characters to the token
-        let updatedCipherText = ciphertext.toString().replaceAll('+','xMl3Jk').replaceAll('/','Por21Ld').replaceAll('=','Ml32');
+        let updatedCipherText = ciphertext.toString().replaceAll('+', 'xMl3Jk').replaceAll('/', 'Por21Ld').replaceAll('=', 'Ml32');
 
         // store the data in the database
         await User.create({
@@ -142,8 +142,8 @@ const registerUserHandler = async (req, reply) => {
 
     try {
         // add special characters to the token
-        let updatedToken = inviteToken.toString().replaceAll('xMl3Jk', '+' ).replaceAll('Por21Ld', '/').replaceAll('Ml32', '=');
- 
+        let updatedToken = inviteToken.toString().replaceAll('xMl3Jk', '+').replaceAll('Por21Ld', '/').replaceAll('Ml32', '=');
+
         // decrypt the invitation token
         let bytes = CryptoJS.AES.decrypt(updatedToken, 'ManifoldSecret');
         let originalText = bytes.toString(CryptoJS.enc.Utf8);
@@ -244,7 +244,7 @@ const getUserHandler = async (req, reply) => {
 
 }
 
-const resetPasswordHandler = async (req, reply) => {
+const updatePasswordHandler = async (req, reply) => {
     try {
         const { currentPassword, newPassword } = req.body
         const { id } = req.user
@@ -296,5 +296,5 @@ module.exports = {
     registerUserHandler,
     getUserHandler,
     refreshTokenHandler,
-    resetPasswordHandler
+    updatePasswordHandler,
 }

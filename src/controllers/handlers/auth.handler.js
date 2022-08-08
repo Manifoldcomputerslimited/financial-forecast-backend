@@ -9,8 +9,12 @@ const { verifyRefreshToken } = require("../auth/verifyRefreshToken");
 const db = require("../../models");
 const User = db.users;
 
-async function findUserByEmail(email, status) {
+async function findUserByEmailStatus(email, status) {
     return await User.findOne({ where: { email, status }, raw: true });
+}
+
+async function findUserByEmail(email) {
+    return await User.findOne({ where: { email }, raw: true });
 }
 
 /**
@@ -23,13 +27,15 @@ const inviteUserHandler = async (req, reply) => {
     const status = false
 
     try {
-        // check if email doesn't already exist and status is false
-        let userExists = await findUserByEmail(email, status)
+        let user;
+        // check if email doesn't already exist
+        let userExists = await findUserByEmail(email)
 
-        if (userExists)
+        // check if user has already registered
+        if (userExists && userExists.status)
             return reply.code(409).send({
                 status: false,
-                message: "User Already Invited",
+                message: "User already exist",
             });
 
         // generate a unique token for the user
@@ -39,15 +45,27 @@ const inviteUserHandler = async (req, reply) => {
         // remove special characters to the token
         let updatedCipherText = ciphertext.toString().replaceAll('+', 'xMl3Jk').replaceAll('/', 'Por21Ld').replaceAll('=', 'Ml32');
 
-        // store the data in the database
-        await User.create({
-            email,
-            inviteToken: token,
-            inviteDate: new Date(),
-        });
+        // invite a new user
+        if (!userExists) {
+            // store the data in the database
+            user = await User.create({
+                email,
+                inviteToken: token,
+                inviteDate: new Date(),
+            });
+        }
+
+        // re-invite a user
+        if (userExists && !userExists.status) {
+            // update the user's status to false
+            user = await User.update({
+                inviteToken: token,
+                inviteDate: new Date(),
+            }, { where: { email } });
+        }
 
         const details = {
-            name: 'Manny',
+            name: 'User',
             templateToUse: "invite",
             url: `http://localhost:3000/register/${updatedCipherText}`,
         }
@@ -63,6 +81,7 @@ const inviteUserHandler = async (req, reply) => {
         };
 
     } catch (e) {
+        console.log(e)
         statusCode = e.code;
         result = {
             status: false,
@@ -85,7 +104,7 @@ const loginUserHandler = async (req, reply) => {
 
     try {
         // check if email exists
-        let user = await findUserByEmail(email, status);
+        let user = await findUserByEmailStatus(email, status);
 
         if (!user)
             return reply.code(500).send({
@@ -290,6 +309,51 @@ const updatePasswordHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
+const forgotPasswordHandler = async (req, reply) => {
+    try {
+        const { email } = req.body
+
+        // check if email exist and status is false
+        let userExists = await findUserByEmailStatus(email, true)
+
+        if (!userExists)
+            return reply.code(409).send({
+                status: false,
+                message: "User Not Found",
+            });
+
+        // encrypt the email
+        let ciphertext = CryptoJS.AES.encrypt(userExists.email, 'ManifoldSecret').toString();
+
+        // remove special characters to the token
+        let updatedCipherText = ciphertext.toString().replaceAll('+', 'xMl3Jk').replaceAll('/', 'Por21Ld').replaceAll('=', 'Ml32');
+
+        const details = {
+            name: userExists.firstName,
+            templateToUse: "invite",
+            url: `http://localhost:3000/password/reset/${updatedCipherText}`,
+        }
+
+        // invite user by sending an email
+        await sendEmail(email, "Reset Manifold Forecast Password", "Please click the link below to reset password", details);
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "Password reset link sent successfully",
+        };
+
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+    return reply.status(statusCode).send(result);
+}
+
 module.exports = {
     inviteUserHandler,
     loginUserHandler,
@@ -297,4 +361,5 @@ module.exports = {
     getUserHandler,
     refreshTokenHandler,
     updatePasswordHandler,
+    forgotPasswordHandler
 }

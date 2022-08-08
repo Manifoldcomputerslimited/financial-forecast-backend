@@ -32,6 +32,16 @@ const updatePasswordOpts = {
     handler: authController.updatePasswordHandler,
 }
 
+const forgotPasswordOpts = {
+    schema: authSchema.forgotPasswordOpts,
+    handler: authController.forgotPasswordHandler,
+}
+
+const resetPasswordOpts = {
+    schema: authSchema.resetPasswordOpts,
+    handler: authController.resetPasswordHandler,
+}
+
 
 const authRoutes = async (fastify, options) => {
     // invite a new user
@@ -45,6 +55,12 @@ const authRoutes = async (fastify, options) => {
 
     // refresh token
     fastify.post('/token/refresh', refreshTokenOpts);
+
+    // forgot password
+    fastify.post('/password/forgot', forgotPasswordOpts);
+
+    // reset password
+    fastify.post('/password/reset', resetPasswordOpts);
 
     fastify.register(require("@fastify/auth"))
         .after(() => privateRoutes(fastify))

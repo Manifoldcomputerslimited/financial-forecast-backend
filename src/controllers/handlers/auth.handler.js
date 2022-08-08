@@ -9,8 +9,8 @@ const { verifyRefreshToken } = require("../auth/verifyRefreshToken");
 const db = require("../../models");
 const User = db.users;
 
-async function findUserByEmailStatus(email, status) {
-    return await User.findOne({ where: { email, status }, raw: true });
+async function findUserByEmailStatus(email, status, raw = true) {
+    return await User.findOne({ where: { email, status }, raw: raw });
 }
 
 async function findUserByEmail(email) {
@@ -295,7 +295,7 @@ const updatePasswordHandler = async (req, reply) => {
 
         result = {
             status: true,
-            message: "Password reset successfully",
+            message: "Password updated successfully",
             data: null,
         };
 
@@ -354,6 +354,49 @@ const forgotPasswordHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
+const resetPasswordHandler = async (req, reply) => {
+    try {
+        const { password, token } = req.body
+
+        // add special characters to the token
+        let updatedToken = token.toString().replaceAll('xMl3Jk', '+').replaceAll('Por21Ld', '/').replaceAll('Ml32', '=');
+
+        // decrypt the invitation token
+        let bytes = CryptoJS.AES.decrypt(updatedToken, 'ManifoldSecret');
+        let email = bytes.toString(CryptoJS.enc.Utf8);
+
+        // check if email exist and status is false
+        let userExists = await findUserByEmailStatus(email, true, false)
+
+        if (!userExists)
+            return reply.code(409).send({
+                status: false,
+                message: "User Not Found",
+            });
+
+        // hash the new password
+        const encryptedPassword = await bcrypt.hash(password, 10);
+
+        // update the password
+        await userExists.update({ password: encryptedPassword });
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "Password reset successfully",
+        };
+
+    } catch (e) { 
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+    return reply.status(statusCode).send(result);
+}
+
 module.exports = {
     inviteUserHandler,
     loginUserHandler,
@@ -361,5 +404,6 @@ module.exports = {
     getUserHandler,
     refreshTokenHandler,
     updatePasswordHandler,
-    forgotPasswordHandler
+    forgotPasswordHandler,
+    resetPasswordHandler
 }

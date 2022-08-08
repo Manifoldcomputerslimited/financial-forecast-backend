@@ -153,4 +153,65 @@ const updatePasswordOpts = {
     logLevel: "debug",
 };
 
-module.exports = { inviteUserOpts, registerUserOpts, loginUserOpts, refreshTokenOpts, getUserOpts, updatePasswordOpts };
+const forgotPasswordOpts = {
+    tags: ["Authentication"],
+    description: "User who forgot password",
+    body: {
+        required: ["email"],
+        type: "object",
+        properties: {
+            eamil: {
+                type: "string",
+                description: "Email address",
+            },
+        },
+    },
+    response: {
+        200: status.success,
+        204: status.noConent,
+        400: status.badRequest,
+        500: status.internalServer,
+    },
+    security: [
+        {
+            apiKey: [],
+        },
+    ],
+    logLevel: "debug",
+};
+
+const resetPasswordOpts = {
+    tags: ["Authentication"],
+    description: "User who wants to reset password",
+    body: {
+        required: ["password", "token"],
+        type: "object",
+        properties: {
+            password: {
+                type: "string",
+                description: "Email address",
+            },
+            token: {
+                type: "string",
+                description: "Token",
+            },
+        },
+    },
+    response: {
+        200: status.success,
+        204: status.noConent,
+        400: status.badRequest,
+        500: status.internalServer,
+    },
+    security: [
+        {
+            apiKey: [],
+        },
+    ],
+    logLevel: "debug",
+};
+
+module.exports = {
+    inviteUserOpts, registerUserOpts, loginUserOpts, refreshTokenOpts,
+    getUserOpts, updatePasswordOpts, forgotPasswordOpts, resetPasswordOpts
+};

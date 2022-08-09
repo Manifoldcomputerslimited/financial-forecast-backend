@@ -71,7 +71,7 @@ const inviteUserHandler = async (req, reply) => {
         }
 
         // invite user by sending an email
-        await sendEmail(email, "Manifold Forecast Invite", "Please click the link below to complete registration", details);
+        await sendEmail(email, "Manifold Forecast Invitation", "Please click the link below to complete registration", details);
 
         statusCode = 200;
 
@@ -330,10 +330,11 @@ const forgotPasswordHandler = async (req, reply) => {
 
         const details = {
             name: userExists.firstName,
-            templateToUse: "invite",
-            url: `http://localhost:3000/password/reset/${updatedCipherText}`,
+            templateToUse: "passwordReset",
+            url: `http://localhost:3000/reset-password/${updatedCipherText}`,
         }
 
+        console.log(details)
         // invite user by sending an email
         await sendEmail(email, "Reset Manifold Forecast Password", "Please click the link below to reset password", details);
 
@@ -387,7 +388,7 @@ const resetPasswordHandler = async (req, reply) => {
             message: "Password reset successfully",
         };
 
-    } catch (e) { 
+    } catch (e) {
         statusCode = e.code;
         result = {
             status: false,

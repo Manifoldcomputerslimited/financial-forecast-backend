@@ -173,10 +173,18 @@ const registerUserHandler = async (req, reply) => {
         // check if email and token match the database
         let user = await User.findOne({ where: { email, inviteToken: originalText } });
 
+        // check if user has been invited
         if (!user)
             return reply.code(401).send({
                 status: false,
                 message: "Invalid email or token",
+            });
+
+        // check if user has already completed registration
+        if (user.status)
+            return reply.code(409).send({
+                status: false,
+                message: "Already registered",
             });
 
         // update the user's status to true

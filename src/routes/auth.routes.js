@@ -68,8 +68,9 @@ const authRoutes = async (fastify, options) => {
 
 
 const privateRoutes = async (fastify, options) => {
+
     // view my profile
-    fastify.get('/profile', {
+    fastify.get('/me', {
         preHandler: fastify.auth([verifyToken]),
         ...getUserOpts,
     });

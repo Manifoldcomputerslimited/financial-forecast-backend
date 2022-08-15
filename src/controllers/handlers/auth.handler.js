@@ -267,8 +267,35 @@ const refreshTokenHandler = async (req, reply) => {
 };
 
 const getUserHandler = async (req, reply) => {
+    try {
 
+        let user = await User.findOne({
+            where: { id: req.user.id },
+        });
 
+        if (!user)
+            return reply.code(404).send({
+                status: false,
+                message: "User Not Found",
+            });
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "User fetched successfully",
+            data: user,
+        };
+
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+
+    return reply.status(statusCode).send(result);
 }
 
 const updatePasswordHandler = async (req, reply) => {

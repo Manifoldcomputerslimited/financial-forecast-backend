@@ -4,7 +4,7 @@ const User = db.users;
 
 const verifyToken = async (req, reply, done) => {
     const token = req?.headers?.authorization?.split(" ")[1];
-
+    console.log('verify token', token)
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_PRIVATE_KEY);
 
     if (!decoded) {

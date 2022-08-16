@@ -2,8 +2,6 @@ const nodemailer = require('nodemailer')
 const Handlebars = require("handlebars");
 const fs = require('fs');
 const path = require('path');
-const { builtinModules } = require('module');
-const { url } = require('inspector');
 
 const sendEmailTemplate = async (templateDetails) => {
     const { name, templateToUse, url } = templateDetails;
@@ -19,10 +17,9 @@ const sendEmailTemplate = async (templateDetails) => {
         else if (templateToUse == "signup") {
             filePath = path.join(__dirname, '../emailTemplates/signup_email_template.html');
         }
-        else if (templateToUse == "passwordChanged") {
-            filePath = path.join(__dirname, '../emailTemplates/password_changed_email_template.html');
+        else if (templateToUse == "passwordReset") {
+            filePath = path.join(__dirname, '../emailTemplates/password_reset_email_template.html');
         }
-
 
         const source = fs.readFileSync(filePath, 'utf-8').toString();
         template = Handlebars.compile(source);

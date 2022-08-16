@@ -71,7 +71,7 @@ const inviteUserHandler = async (req, reply) => {
         }
 
         // invite user by sending an email
-        await sendEmail(email, "Manifold Forecast Invite", "Please click the link below to complete registration", details);
+        await sendEmail(email, "Manifold Forecast Invitation", "Please click the link below to complete registration", details);
 
         statusCode = 200;
 
@@ -160,6 +160,7 @@ const registerUserHandler = async (req, reply) => {
     const { firstName, lastName, email, password, inviteToken } = req.body;
 
     try {
+        // TODO:: check if link has expired
         // add special characters to the token
         let updatedToken = inviteToken.toString().replaceAll('xMl3Jk', '+').replaceAll('Por21Ld', '/').replaceAll('Ml32', '=');
 
@@ -173,10 +174,18 @@ const registerUserHandler = async (req, reply) => {
         // check if email and token match the database
         let user = await User.findOne({ where: { email, inviteToken: originalText } });
 
+        // check if user has been invited
         if (!user)
             return reply.code(401).send({
                 status: false,
                 message: "Invalid email or token",
+            });
+
+        // check if user has already completed registration
+        if (user.status)
+            return reply.code(409).send({
+                status: false,
+                message: "Already registered",
             });
 
         // update the user's status to true
@@ -259,8 +268,35 @@ const refreshTokenHandler = async (req, reply) => {
 };
 
 const getUserHandler = async (req, reply) => {
+    try {
 
+        let user = await User.findOne({
+            where: { id: req.user.id },
+        });
 
+        if (!user)
+            return reply.code(404).send({
+                status: false,
+                message: "User Not Found",
+            });
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "User fetched successfully",
+            data: user,
+        };
+
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+
+    return reply.status(statusCode).send(result);
 }
 
 const updatePasswordHandler = async (req, reply) => {
@@ -330,10 +366,11 @@ const forgotPasswordHandler = async (req, reply) => {
 
         const details = {
             name: userExists.firstName,
-            templateToUse: "invite",
-            url: `http://localhost:3000/password/reset/${updatedCipherText}`,
+            templateToUse: "passwordReset",
+            url: `http://localhost:3000/reset-password/${updatedCipherText}`,
         }
 
+        console.log(details)
         // invite user by sending an email
         await sendEmail(email, "Reset Manifold Forecast Password", "Please click the link below to reset password", details);
 
@@ -387,7 +424,7 @@ const resetPasswordHandler = async (req, reply) => {
             message: "Password reset successfully",
         };
 
-    } catch (e) { 
+    } catch (e) {
         statusCode = e.code;
         result = {
             status: false,

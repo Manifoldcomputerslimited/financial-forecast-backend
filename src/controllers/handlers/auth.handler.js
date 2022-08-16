@@ -160,6 +160,7 @@ const registerUserHandler = async (req, reply) => {
     const { firstName, lastName, email, password, inviteToken } = req.body;
 
     try {
+        // TODO:: check if link has expired
         // add special characters to the token
         let updatedToken = inviteToken.toString().replaceAll('xMl3Jk', '+').replaceAll('Por21Ld', '/').replaceAll('Ml32', '=');
 

@@ -57,8 +57,6 @@ const exchangeRateHandler = async (req, reply) => {
 
             // if yes, return the exchange rate
             if (!rate) {
-                rate = rate.value
-            } else {
                 // if no , get the exchange rate from zoho and update
                 url = `${process.env.ZOHO_BOOK_BASE_URL}/settings/currencies/${process.env.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${process.env.ORGANIZATION_ID}`;
 
@@ -73,7 +71,6 @@ const exchangeRateHandler = async (req, reply) => {
                 rate = await rate.update({
                     value: res.data.exchange_rates[0].rate,
                 })
-
             }
         }
 

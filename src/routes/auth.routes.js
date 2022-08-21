@@ -22,6 +22,11 @@ const getUserOpts = {
     handler: authController.getUserHandler,
 };
 
+const getUsersOpts = {
+    // schema: authSchema.getUsersOpts,
+    handler: authController.getUsersHandler,
+};
+
 const refreshTokenOpts = {
     schema: authSchema.refreshTokenOpts,
     handler: authController.refreshTokenHandler,
@@ -30,6 +35,11 @@ const refreshTokenOpts = {
 const updatePasswordOpts = {
     schema: authSchema.updatePasswordOpts,
     handler: authController.updatePasswordHandler,
+}
+
+const updateRoleOpts = {
+    //schema: authSchema.updatePasswordOpts,
+    handler: authController.updateUserRoleHandler,
 }
 
 const forgotPasswordOpts = {
@@ -74,6 +84,18 @@ const privateRoutes = async (fastify, options) => {
         preHandler: fastify.auth([verifyToken]),
         ...getUserOpts,
     });
+
+    // view all users
+    fastify.get('/users', {
+        preHandler: fastify.auth([verifyToken]),
+        ...getUsersOpts,
+    });
+
+    // update user role
+    fastify.patch("/users/role/update", {
+        preHandler: fastify.auth([verifyToken]),
+        ...updateRoleOpts
+    })
 
     // update user password
     fastify.post("/password/update", {

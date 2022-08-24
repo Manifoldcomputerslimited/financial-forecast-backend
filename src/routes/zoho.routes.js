@@ -19,6 +19,9 @@ const openingBalanceOpts = {
     handler: zohoController.openingBalanceHandler,
 }
 
+const salesOrderOpts = {
+    handler: zohoController.salesOrderHandler,
+}
 
 const zohoRoutes = async (fastify, options) => {
 
@@ -27,17 +30,24 @@ const zohoRoutes = async (fastify, options) => {
 }
 
 const privateRoutes = async (fastify, options) => {
-     // get exchange rate from zoho
-     fastify.post('/zoho/exchange/rate', {
+    // get exchange rate from zoho
+    fastify.post('/zoho/exchange/rate', {
         preHandler: fastify.auth([verifyToken]),
         ...exchangeRateOpts
-     });
+    });
 
-     // generate opening balance from zoho
-     fastify.post('/zoho/opening/balance', {
+    // generate opening balance from zoho
+    fastify.post('/zoho/opening/balance', {
         preHandler: fastify.auth([verifyToken]),
         ...openingBalanceOpts
-     });
+    });
+
+    // get list of sales order
+    fastify.post('/zoho/sales/order', {
+        preHandler: fastify.auth([verifyToken]),
+        ...salesOrderOpts
+    });
+
 
     // generate a zoho token
     fastify.post('/zoho/token/generate', {

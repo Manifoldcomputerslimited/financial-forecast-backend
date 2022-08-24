@@ -19,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
         },
-        // role is true for admin and false for user
+        // role is true:1 for admin and false:0 for user
         role: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,

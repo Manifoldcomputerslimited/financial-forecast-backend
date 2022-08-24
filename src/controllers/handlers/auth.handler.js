@@ -517,6 +517,10 @@ const resetPasswordHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
+const deleteHandler = async (req, reply) => {
+    
+}
+
 module.exports = {
     inviteUserHandler,
     loginUserHandler,

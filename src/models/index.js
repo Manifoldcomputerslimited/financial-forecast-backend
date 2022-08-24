@@ -33,6 +33,7 @@ db.sequelize = sequelize;
 
 db.users = require("./user.model")(sequelize, Sequelize);
 db.tokens = require("./token.model")(sequelize, Sequelize);
+db.rates = require("./rate.model")(sequelize, Sequelize);
 
 db.tokens.belongsTo(db.users, { foreignKey: "userId" });
 db.users.hasMany(db.tokens, { foreignKey: "userId" });

@@ -18,7 +18,8 @@ async function findUserByEmail(email) {
 }
 
 /**
- * invite a user
+ * invite or re-invite a user
+ * by default user role is 'user'
  * @param {string} email - the email of the user.
  * @returns {object} - information about the user.
  */
@@ -81,7 +82,6 @@ const inviteUserHandler = async (req, reply) => {
         };
 
     } catch (e) {
-        console.log(e)
         statusCode = e.code;
         result = {
             status: false,
@@ -299,6 +299,89 @@ const getUserHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
+/**
+ * view all users
+ * @returns {object} - information about the user.
+ */
+const getUsersHandler = async (req, reply) => {
+
+    try {
+        let users = await User.findAll();
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "Users retrieved successfully",
+            data: users,
+        };
+
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+    return reply.status(statusCode).send(result);
+}
+
+/**
+ * update user role
+ * @returns {object} - information about the user.
+ */
+const updateUserRoleHandler = async (req, reply) => {
+
+    try {
+        let { role, email } = req.body
+        let isAdmin = req.user.role
+
+
+        if (!isAdmin)
+            return reply.code(401).send({
+                status: false,
+                message: "You are not authorized to perform this action",
+            });
+
+
+        let user = await User.findOne({
+            where: { email },
+        });
+
+        if (!user.status)
+            return reply.code(400).send({
+                status: false,
+                message: "User has not completed registration",
+            });
+
+
+        if (!user)
+            return reply.code(404).send({
+                status: false,
+                message: "User Not Found",
+            });
+
+        await user.update({ role });
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "User role updated successfully",
+        };
+
+    } catch (e) {
+        console.log(e)
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+    return reply.status(statusCode).send(result);
+}
+
+
 const updatePasswordHandler = async (req, reply) => {
     try {
         const { currentPassword, newPassword } = req.body
@@ -434,6 +517,10 @@ const resetPasswordHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
+const deleteHandler = async (req, reply) => {
+    
+}
+
 module.exports = {
     inviteUserHandler,
     loginUserHandler,
@@ -442,5 +529,7 @@ module.exports = {
     refreshTokenHandler,
     updatePasswordHandler,
     forgotPasswordHandler,
-    resetPasswordHandler
+    resetPasswordHandler,
+    getUsersHandler,
+    updateUserRoleHandler
 }

@@ -5,9 +5,7 @@ let moment = require('moment');
 const User = db.users;
 const Rate = db.rates
 
-
-
-// this generates zoho access token
+// Get exchange rate and save into database
 const exchangeRateHandler = async (req, reply) => {
 
     try {
@@ -82,6 +80,7 @@ const exchangeRateHandler = async (req, reply) => {
             data: rate,
         }
     } catch (e) {
+        console.log(e)
         statusCode = e.code;
         result = {
             status: false,

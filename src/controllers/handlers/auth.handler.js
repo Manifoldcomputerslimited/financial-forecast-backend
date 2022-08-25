@@ -517,8 +517,38 @@ const resetPasswordHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
-const deleteHandler = async (req, reply) => {
-    
+const deleteUserHandler = async (req, reply) => {
+    try {
+        // TODO:: only admin should be able to delete a user
+        const id = req.params.id;
+
+        let user = await User.findOne({
+            where: { id },
+        });
+
+        if (!user)
+            return reply.code(404).send({
+                status: false,
+                message: "User Not Found",
+            });
+
+        user.destroy();
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: "User deleted successfully",
+            data: {},
+        };
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+    return reply.status(statusCode).send(result);
 }
 
 module.exports = {
@@ -531,5 +561,6 @@ module.exports = {
     forgotPasswordHandler,
     resetPasswordHandler,
     getUsersHandler,
-    updateUserRoleHandler
+    updateUserRoleHandler,
+    deleteUserHandler
 }

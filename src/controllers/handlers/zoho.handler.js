@@ -9,7 +9,7 @@ const BillForecast = db.billForecasts;
 
 
 let moment = require('moment');
-const { Sequelize } = require('../../models');
+const { Sequelize, invoiceForecasts } = require('../../models');
 moment().format();
 
 const getInvoice = async (options) => {
@@ -20,190 +20,8 @@ const getInvoice = async (options) => {
     let startDate
     let endDate
 
-    let invoices = [
-        // [
-        //     {
-        //         "invoice_id": "2597328000006005805",
-        //         "customer_name": "FOUNTAIN HEIGHT SECONDARY SCHOOL",
-        //         "customer_id": "2597328000000095823",
-        //         "company_name": "FOUNTAIN HEIGHT SECONDARY SCHOOL",
-        //         "status": "paid",
-        //         "invoice_number": "INV-000660",
-        //         "reference_number": "FOUNTAIN HEIGHT SECONDARY SCH",
-        //         "date": "2022-07-14",
-        //         "due_date": "2022-07-17",
-        //         "due_days": "",
-        //         "currency_id": "2597328000000073082",
-        //         "currency_code": "NGN",
-        //         "currency_symbol": "NGN",
-        //         "type": "invoice",
-        //         "updated_time": "2022-08-02T15:26:50+0100",
-        //         "transaction_type": "",
-        //         "total": 220805.00,
-        //         "balance": 1000.00,
-        //         "created_time": "2022-08-02T15:24:28+0100",
-        //         "exchange_rate": 1.00
-        //     },
-        //     {
-        //         "invoice_id": "2597328000006005001",
-        //         "customer_name": "CONSOLIDATED HALLMARK INSURANCE PLC",
-        //         "customer_id": "2597328000000160554",
-        //         "company_name": "CONSOLIDATED HALLMARK INSURANCE PLC",
-        //         "status": "paid",
-        //         "invoice_number": "INV-000657",
-        //         "reference_number": "Consolidated Hallmark _15/7/2022",
-        //         "date": "2022-07-21",
-        //         "due_date": "2022-07-21",
-        //         "due_days": "",
-        //         "currency_id": "2597328000000073082",
-        //         "currency_code": "NGN",
-        //         "currency_symbol": "NGN",
-        //         "type": "invoice",
-        //         "updated_time": "2022-08-01T18:45:23+0100",
-        //         "transaction_type": "",
-        //         "total": 155875.00,
-        //         "balance": 500000.00,
-        //         "created_time": "2022-08-01T18:40:39+0100",
-        //         "exchange_rate": 1.00
-        //     },
-        //     {
-        //         "invoice_id": "2597328000006005805",
-        //         "customer_name": "FOUNTAIN HEIGHT SECONDARY SCHOOL",
-        //         "customer_id": "2597328000000095823",
-        //         "company_name": "FOUNTAIN HEIGHT SECONDARY SCHOOL",
-        //         "status": "paid",
-        //         "invoice_number": "INV-000660",
-        //         "reference_number": "FOUNTAIN HEIGHT SECONDARY SCH",
-        //         "date": "2022-07-14",
-        //         "due_date": "2022-07-17",
-        //         "due_days": "",
-        //         "currency_id": "2597328000000073082",
-        //         "currency_code": "NGN",
-        //         "currency_symbol": "NGN",
-        //         "type": "invoice",
-        //         "updated_time": "2022-08-02T15:26:50+0100",
-        //         "transaction_type": "",
-        //         "total": 220805.00,
-        //         "balance": 1000.00,
-        //         "created_time": "2022-08-02T15:24:28+0100",
-        //         "exchange_rate": 1.00
-        //     },
-        // ],
-        // [
-        //     {
-        //         "invoice_id": "2597328000006330149",
-        //         "customer_name": "HUAWEI TECHNOLOGIES COMPANY NIGERIA LTD",
-        //         "customer_id": "2597328000000095977",
-        //         "company_name": "HUAWEI TECHNOLOGIES COMPANY NIGERIA LTD",
-        //         "status": "overdue",
-        //         "invoice_number": "INV-000692",
-        //         "reference_number": "Funded Head Service Charge",
-        //         "date": "2022-08-30",
-        //         "due_date": "2022-08-30",
-        //         "due_days": "Overdue by 4 days",
-        //         "currency_id": "2597328000000073082",
-        //         "currency_code": "NGN",
-        //         "currency_symbol": "NGN",
-        //         "type": "invoice",
-        //         "updated_time": "2022-09-02T18:32:47+0100",
-        //         "transaction_type": "",
-        //         "total": 135000.00,
-        //         "balance": 135000.00,
-        //         "created_time": "2022-08-30T17:27:28+0100",
-        //         "exchange_rate": 1.00
-        //     },
-        //     {
-        //         "invoice_id": "2597328000006277339",
-        //         "customer_name": "SHELL NIGERIA EXPLORATION COMPANY- EPROCUREMENT",
-        //         "customer_id": "2597328000000096307",
-        //         "company_name": "SHELL NIGERIA EXPLORATION COMPANY EPROCUREMENT",
-        //         "status": "overdue",
-        //         "invoice_number": "INV-000688",
-        //         "reference_number": "PCARD 2531 SNEPCO",
-        //         "date": "2022-08-25",
-        //         "due_date": "2022-08-28",
-        //         "due_days": "Overdue by 6 days",
-        //         "currency_id": "2597328000000073082",
-        //         "currency_code": "NGN",
-        //         "currency_symbol": "NGN",
-        //         "type": "invoice",
-        //         "updated_time": "2022-09-01T08:30:44+0100",
-        //         "transaction_type": "",
-        //         "total": 320719.95,
-        //         "balance": 320719.95,
-        //         "created_time": "2022-08-25T14:55:32+0100",
-        //         "exchange_rate": 1.00
-        //     },
-        //     {
-        //         "invoice_id": "2597328000006277019",
-        //         "customer_name": "SHELL NIGERIA EXPLORATION COMPANY- EPROCUREMENT",
-        //         "customer_id": "2597328000000096307",
-        //         "company_name": "SHELL NIGERIA EXPLORATION COMPANY EPROCUREMENT",
-        //         "status": "overdue",
-        //         "invoice_number": "INV-000687",
-        //         "reference_number": "PCARD_2536 SNEPCO",
-        //         "date": "2022-08-24",
-        //         "due_date": "2022-08-27",
-        //         "due_days": "Overdue by 7 days",
-        //         "currency_id": "2597328000000073082",
-        //         "currency_code": "NGN",
-        //         "currency_symbol": "NGN",
-        //         "type": "invoice",
-        //         "updated_time": "2022-08-26T08:14:16+0100",
-        //         "transaction_type": "",
-        //         "total": 1020345.31,
-        //         "balance": 1020345.31,
-        //         "created_time": "2022-08-25T11:42:57+0100",
-        //         "exchange_rate": 1.00
-        //     },
-        //     {
-        //         "invoice_id": "2597328000006232009",
-        //         "customer_name": "SHELL NIGERIA EXPLORATION COMPANY- EPROCUREMENT",
-        //         "customer_id": "2597328000000096307",
-        //         "company_name": "SHELL NIGERIA EXPLORATION COMPANY EPROCUREMENT",
-        //         "status": "overdue",
-        //         "invoice_number": "INV-000681",
-        //         "reference_number": "PCARD 2270 SNEPCO",
-        //         "date": "2022-08-22",
-        //         "due_date": "2022-08-25",
-        //         "due_days": "Overdue by 9 days",
-        //         "currency_id": "2597328000000073082",
-        //         "currency_code": "NGN",
-        //         "currency_symbol": "NGN",
-        //         "type": "invoice",
-        //         "updated_time": "2022-08-24T08:12:19+0100",
-        //         "transaction_type": "",
-        //         "total": 148816.31,
-        //         "balance": 148816.31,
-        //         "created_time": "2022-08-22T13:21:59+0100",
-        //         "exchange_rate": 1.00
-        //     },
-        // ],
-        // [
-        //     {
-        //         "invoice_id": "2597328000006371055",
-        //         "customer_name": "HUAWEI TECHNOLOGIES COMPANY NIGERIA LTD",
-        //         "customer_id": "2597328000000095977",
-        //         "company_name": "HUAWEI TECHNOLOGIES COMPANY NIGERIA LTD",
-        //         "status": "pending_approval",
-        //         "invoice_number": "INV-000694",
-        //         "reference_number": " SUBCONTRACTORPO_ 01583   ",
-        //         "date": "2022-09-02",
-        //         "due_date": "2022-09-02",
-        //         "due_days": "",
-        //         "currency_id": "2597328000000073082",
-        //         "currency_code": "NGN",
-        //         "currency_symbol": "NGN",
-        //         "type": "invoice",
-        //         "updated_time": "2022-09-02T18:51:01+0100",
-        //         "transaction_type": "",
-        //         "total": 4298808.15,
-        //         "balance": 4298808.15,
-        //         "created_time": "2022-09-02T18:51:01+0100",
-        //         "exchange_rate": 1.00
-        //     },
-        // ],
-    ]
+    let invoices = []
+
 
     // let dollar;
 
@@ -244,6 +62,9 @@ const getInvoice = async (options) => {
         }
         for (const e of invoice) {
 
+            if (e.balance == 0) {
+                break;
+            }
 
             // if (e.currency_code === 'USD') {
             //     dollar = e.balance
@@ -272,6 +93,7 @@ const getInvoice = async (options) => {
                 forecastType: `${forecastNumber} ${forecastPeriod}`
             }
 
+            // TODO:: uncomment
             await Invoice.create(
                 payload
             );
@@ -279,15 +101,7 @@ const getInvoice = async (options) => {
         }
 
         dollarClosingBalance = invoice.reduce(function (acc, obj) {
-            // if (obj.currency_code === 'USD') {
-            //     dollar = obj.balance
-            // }
 
-            // if (obj.currency_code === 'NGN') {
-            //     // naira = obj.balance
-            //     // get this from exchange rate endpoint
-            //     dollar = (obj.balance / 420)
-            // }
             balance = obj.currency_code === 'USD' ? obj.balance : 0.0
 
 
@@ -295,13 +109,7 @@ const getInvoice = async (options) => {
         }, 0);
 
         nairaClosingBalance = invoice.reduce(function (acc, obj) {
-            // if (obj.currency_code === 'USD') {
-            //     naira = obj.balance * obj.exchange_rate
-            // }
 
-            // if (obj.currency_code === 'NGN') {
-            //     naira = obj.balance
-            // }
             balance = obj.currency_code === 'NGN' ? obj.balance : 0.0
 
 
@@ -311,9 +119,20 @@ const getInvoice = async (options) => {
         await InvoiceForecast.create(
             {
                 nairaClosingBalance: nairaClosingBalance,
+                dollarClosingBalance: 0.0,
+                month: startDate,
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                currency: "NGN"
+            }
+        );
+
+        await InvoiceForecast.create(
+            {
+                nairaClosingBalance: 0.0,
                 dollarClosingBalance: dollarClosingBalance,
                 month: startDate,
-                forecastType: `${forecastNumber} ${forecastPeriod}`
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                currency: "USD"
             }
         );
 
@@ -334,6 +153,8 @@ const getBill = async (options) => {
 
     let bills = [];
 
+
+
     for (i = -2; i < forecastNumber; i++) {
         if (i < 0) {
             startDate = date.clone().subtract(Math.abs(i), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
@@ -345,6 +166,7 @@ const getBill = async (options) => {
             endDate = date.clone().add(Math.abs(i), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD')
         }
 
+        console.log('bills')
         // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
         let url = `${process.env.ZOHO_BOOK_BASE_URL}/bills?organization_id=${process.env.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}`
 
@@ -365,6 +187,10 @@ const getBill = async (options) => {
             startDate = date.clone().add(Math.abs(-2 + i), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
         }
         for (const e of bill) {
+
+            if (e.balance == 0) {
+                break;
+            }
 
             // if (e.currency_code === 'USD') {
             //     dollar = e.balance
@@ -431,9 +257,20 @@ const getBill = async (options) => {
         await BillForecast.create(
             {
                 nairaClosingBalance: nairaClosingBalance,
+                dollarClosingBalance: 0.0,
+                month: startDate,
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                currency: "NGN",
+            }
+        );
+
+        await BillForecast.create(
+            {
+                nairaClosingBalance: 0.0,
                 dollarClosingBalance: dollarClosingBalance,
                 month: startDate,
-                forecastType: `${forecastNumber} ${forecastPeriod}`
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                currency: "USD",
             }
         );
 
@@ -453,183 +290,593 @@ const openingBalanceHandler = async (req, reply) => {
         let billsBalance;
         let zohoAccessToken = req.body.zohoAccessToken;
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
-        const NOW = new Date();
+        const TODAY_END = new Date().setHours(23, 59, 59, 999);
 
 
-        // let openingBalances = [
-        //     {
-        //         "month": "july",
-        //         "amount": 0,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "month": "july",
-        //         "amount": 0,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "month": "august",
-        //         "amount": 55000,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "month": "august",
-        //         "amount": 3000,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "month": "september",
-        //         "amount": 3000,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "month": "september",
-        //         "amount": 1000,
-        //         "currency": "USD"
-        //     },
-        // ]
+        // let invoices = {
+        //     count: 12,
+        //     rows: [
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "JEVI AUSTIN",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-07-25",
+        //             "dueDate": "2022-07-28",
+        //             "due_days": "",
+        //             "currencyCode": "NGN",
+        //             "balance": 25000.00,
+        //             "naira": 25000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "JEVI AUSTIN",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-07-25",
+        //             "dueDate": "2022-07-28",
+        //             "due_days": "",
+        //             "currencyCode": "USD",
+        //             "balance": 4000.00,
+        //             "naira": 0.00,
+        //             "dollar": 4000.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "LOTUS BANK LIMITED",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-07-25",
+        //             "dueDate": "2022-07-28",
+        //             "due_days": "",
+        //             "currencyCode": "NGN",
+        //             "balance": 4000.00,
+        //             "naira": 4000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "ACCESS BANK ",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-08-25",
+        //             "dueDate": "2022-08-28",
+        //             "due_days": "",
+        //             "currencyCode": "USD",
+        //             "balance": 4000.00,
+        //             "naira": 0.00,
+        //             "dollar": 4000.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "Chevron",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-08-25",
+        //             "dueDate": "2022-08-28",
+        //             "due_days": "",
+        //             "currencyCode": "NGN",
+        //             "balance": 5000.00,
+        //             "naira": 5000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "SHELL PETROLEUM",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-08-25",
+        //             "dueDate": "2022-08-28",
+        //             "due_days": "",
+        //             "currencyCode": "NGN",
+        //             "balance": 40000.00,
+        //             "naira": 40000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "SHELL PETROLEUM",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-08-25",
+        //             "dueDate": "2022-08-28",
+        //             "due_days": "",
+        //             "currencyCode": "USD",
+        //             "balance": 2000.00,
+        //             "naira": 2000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "JEVI AUSTIN",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-09-25",
+        //             "dueDate": "2022-09-28",
+        //             "due_days": "",
+        //             "currencyCode": "NGN",
+        //             "balance": 30000.00,
+        //             "naira": 30000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "JEVI AUSTIN",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-09-25",
+        //             "dueDate": "2022-09-28",
+        //             "due_days": "",
+        //             "currencyCode": "USD",
+        //             "balance": 200.00,
+        //             "naira": 0.00,
+        //             "dollar": 200.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "LOTUS BANK LIMITED",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-09-25",
+        //             "dueDate": "2022-09-28",
+        //             "due_days": "",
+        //             "currencyCode": "USD",
+        //             "balance": 5000.00,
+        //             "naira": 0.00,
+        //             "dollar": 5000.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "MOBIL PRODUCING ",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-10-25",
+        //             "dueDate": "2022-10-28",
+        //             "due_days": "",
+        //             "currencyCode": "NGN",
+        //             "balance": 40000.00,
+        //             "naira": 40000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //         {
+        //             "invoiceId": "2597328000006277339",
+        //             "customerName": "MOBIL PRODUCING",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-10-25",
+        //             "dueDate": "2022-10-28",
+        //             "due_days": "",
+        //             "currencyCode": "USD",
+        //             "balance": 2000.00,
+        //             "naira": 0.00,
+        //             "dollar": 2000.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-18 22:15:07",
+        //             "updatedAt": "2022-09-18 22:15:07"
+        //         },
+        //     ]
+        // };
 
-        // let invoices = [
-        //     {
-        //         "title": "kvb",
-        //         "month": "2022-07-17",
-        //         "amount": 40000,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "title": "manifold",
-        //         "month": "2022-07-01",
-        //         "amount": 4000,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "title": "kvb",
-        //         "month": "2022-09-17",
-        //         "amount": 1000,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "title": "vic",
-        //         "month": "2022-07-17",
-        //         "amount": 4000,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "title": "deepnet",
-        //         "month": "2022-08-17",
-        //         "amount": 3000,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "title": "silver fox",
-        //         "month": "2022-08-29",
-        //         "amount": 4000,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "title": "kvb",
-        //         "month": "2022-07-17",
-        //         "amount": 1000,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "title": "manifold",
-        //         "month": "2022-09-17",
-        //         "amount": 2000,
-        //         "currency": "NG"
-        //     },
-        // ]
 
+        // let bills = {
+        //     count: 8,
+        //     rows: [
+        //         {
+        //             "billId": "2597328000006277339",
+        //             "vendorId": "2597328000006277339",
+        //             "vendorName": "BTI",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-07-25",
+        //             "dueDate": "2022-07-28",
+        //             "currencyCode": "USD",
+        //             "balance": 3000.00,
+        //             "naira": 0.00,
+        //             "dollar": 3000.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "billId": "2597328000006277339",
+        //             "vendorId": "2597328000006277339",
+        //             "vendorName": "COSCHARIS",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-07-25",
+        //             "dueDate": "2022-07-28",
+        //             "currencyCode": "NGN",
+        //             "balance": 5000.00,
+        //             "naira": 5000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "billId": "2597328000006277339",
+        //             "vendorId": "2597328000006277339",
+        //             "vendorName": "EXTRA VALUE ",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-08-25",
+        //             "dueDate": "2022-08-28",
+        //             "currencyCode": "USD",
+        //             "balance": 1000.00,
+        //             "naira": 0.00,
+        //             "dollar": 1000.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "billId": "2597328000006277339",
+        //             "vendorId": "2597328000006277339",
+        //             "vendorName": "KENNY JEE TECHNICAL",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-07-25",
+        //             "dueDate": "2022-07-28",
+        //             "currencyCode": "NGN",
+        //             "balance": 3000.00,
+        //             "naira": 3000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "billId": "2597328000006277339",
+        //             "vendorId": "2597328000006277339",
+        //             "vendorName": "KENNY JEE TECHNICAL",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-07-25",
+        //             "dueDate": "2022-07-28",
+        //             "currencyCode": "USD",
+        //             "balance": 200.00,
+        //             "naira": 0.00,
+        //             "dollar": 200.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "billId": "2597328000006277339",
+        //             "vendorId": "2597328000006277339",
+        //             "vendorName": "COSCHARIS",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-09-25",
+        //             "dueDate": "2022-09-28",
+        //             "currencyCode": "NGN",
+        //             "balance": 73000.00,
+        //             "naira": 73000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "billId": "2597328000006277339",
+        //             "vendorId": "2597328000006277339",
+        //             "vendorName": "COSCHARIS",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-09-25",
+        //             "dueDate": "2022-09-28",
+        //             "currencyCode": "USD",
+        //             "balance": 8000.00,
+        //             "naira": 0.00,
+        //             "dollar": 8000.00,
+        //             "exchange_rate": 1.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "billId": "2597328000006277339",
+        //             "vendorId": "2597328000006277339",
+        //             "vendorName": "BTI",
+        //             "status": "approved",
+        //             "invoiceNumber": "INV-000688",
+        //             "referenceNumber": "PCARD 2531 SNEPCO",
+        //             "date": "2022-10-25",
+        //             "dueDate": "2022-10-28",
+        //             "currencyCode": "NGN",
+        //             "balance": 9000.00,
+        //             "naira": 9000.00,
+        //             "dollar": 0.00,
+        //             "exchange_rate": 420.00,
+        //             "forecastType": "3 Month",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //     ]
+        // }
 
-        // let bills = [
-        //     {
-        //         "title": "bti",
-        //         "month": "2022-07-17",
-        //         "amount": 2500,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "title": "blessed",
-        //         "month": "2022-07-17",
-        //         "amount": 1400,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "title": "ict",
-        //         "month": "2022-07-17",
-        //         "amount": 50,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "title": "kenny",
-        //         "month": "2022-08-17",
-        //         "amount": 60000,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "title": "bti",
-        //         "month": "2022-07-17",
-        //         "amount": 5000,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "title": "upper",
-        //         "month": "2022-09-17",
-        //         "amount": 4000,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "title": "jk koncepts",
-        //         "month": "2022-08-17",
-        //         "amount": 10200,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "title": "ict",
-        //         "month": "2022-07-17",
-        //         "amount": 232000,
-        //         "currency": "NG"
-        //     },
-        // ]
+        // let invoiceForecasts = {
+        //     count: 10,
+        //     rows: [
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 29000,
+        //             "month": "2022-07-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 4000,
+        //             "nairaClosingBalance": 0,
+        //             "month": "2022-07-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 45000.00,
+        //             "month": "2022-08-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 6000,
+        //             "nairaClosingBalance": 0,
+        //             "month": "2022-08-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 30000,
+        //             "month": "2022-09-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 5200,
+        //             "nairaClosingBalance": 0,
+        //             "month": "2022-09-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 40000,
+        //             "month": "2022-10-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 2000.00,
+        //             "nairaClosingBalance": 0.00,
+        //             "month": "2022-10-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 0.00,
+        //             "month": "2022-11-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 0,
+        //             "month": "2022-11-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //     ]
+        // }
 
-        // let invoiceForeacast = [
-        //     {
-        //         "month": "July",
-        //         "nairaClosing": 123,
-        //         "dollarClosing": 400,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "month": "July",
-        //         "nairaClosing": 123,
-        //         "dollarClosing": 400,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "month": "august",
-        //         "nairaClosing": 3000,
-        //         "dollarClosing": 400,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "month": "august",
-        //         "nairaClosing": 3000,
-        //         "dollarClosing": 400,
-        //         "currency": "USD"
-        //     },
-        //     {
-        //         "month": "september",
-        //         "nairaClosing": 4000,
-        //         "dollarClosing": 400,
-        //         "currency": "NG"
-        //     },
-        //     {
-        //         "month": "september",
-        //         "nairaClosing": 4000,
-        //         "dollarClosing": 400,
-        //         "currency": "USD"
-        //     },
-        // ]
+        // let billForecasts = {
+        //     count: 10,
+        //     rows: [
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 8000,
+        //             "month": "2022-07-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 3200,
+        //             "nairaClosingBalance": 0,
+        //             "month": "2022-07-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 0.00,
+        //             "month": "2022-08-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 1000,
+        //             "nairaClosingBalance": 0,
+        //             "month": "2022-08-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 73000,
+        //             "month": "2022-09-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 8000,
+        //             "nairaClosingBalance": 0,
+        //             "month": "2022-09-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 9000,
+        //             "month": "2022-10-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 0.00,
+        //             "month": "2022-10-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 0.00,
+        //             "month": "2022-11-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "NGN",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //         {
+        //             "id": "2597328000006277339",
+        //             "dollarClosingBalance": 0.00,
+        //             "nairaClosingBalance": 0,
+        //             "month": "2022-11-28",
+        //             "forecastType": "3 Month",
+        //             "currency": "USD",
+        //             "createdAt": "2022-09-07 22:15:07",
+        //             "updatedAt": "2022-09-07 22:15:07"
+        //         },
+        //     ]
+        // }
 
         const options = {
             headers: {
@@ -637,87 +884,148 @@ const openingBalanceHandler = async (req, reply) => {
                 'Authorization': 'Bearer ' + zohoAccessToken
             }
         }
-
-        await getInvoice(options);
-
-        await getBill(options);
+        // TODO:: undo later
 
         let invoices = await Invoice.findAndCountAll({
             where: {
                 forecastType: '3 month',
                 createdAt: {
                     [Op.gt]: TODAY_START,
-                    [Op.lt]: NOW
+                    [Op.lt]: TODAY_END
                 }
             },
         });
+        console.log('let me call ivoices', await invoices.count);
 
         let bills = await Bill.findAndCountAll({
             where: {
                 forecastType: '3 month',
                 createdAt: {
                     [Op.gt]: TODAY_START,
-                    [Op.lt]: NOW
+                    [Op.lt]: TODAY_END
                 }
             },
         });
 
-        let openingBalanceNG = 0;
-        let openingBalanceUSD = 0;
 
 
         // opening balance for july will be 0 USD, NG
         // get invoice forecast where forecastType 
-        const invoiceForeacasts = await InvoiceForecast.findAndCountAll({
+        let invoiceForecasts = await InvoiceForecast.findAndCountAll({
             where: {
                 forecastType: '3 month',
                 createdAt: {
                     [Op.gt]: TODAY_START,
-                    [Op.lt]: NOW
+                    [Op.lt]: TODAY_END
                 }
             },
         });
 
-        const billForeacasts = await BillForecast.findAndCountAll({
+        let billForecasts = await BillForecast.findAndCountAll({
             where: {
                 forecastType: '3 month',
                 createdAt: {
                     [Op.gt]: TODAY_START,
-                    [Op.lt]: NOW
+                    [Op.lt]: TODAY_END
                 }
             },
         });
+
+        console.log('waht do you have', billForecasts);
+        if (!billForecasts.count && !invoiceForecasts.count && !bills.count && !invoices.count) {
+            await getInvoice(options);
+
+            await getBill(options);
+
+            invoices = await Invoice.findAndCountAll({
+                where: {
+                    forecastType: '3 month',
+                    createdAt: {
+                        [Op.gt]: TODAY_START,
+                        [Op.lt]: TODAY_END
+                    }
+                },
+            });
+            console.log('let me call ivoices', await invoices.count);
+
+            bills = await Bill.findAndCountAll({
+                where: {
+                    forecastType: '3 month',
+                    createdAt: {
+                        [Op.gt]: TODAY_START,
+                        [Op.lt]: TODAY_END
+                    }
+                },
+            });
+
+
+
+            // opening balance for july will be 0 USD, NG
+            // get invoice forecast where forecastType 
+            invoiceForecasts = await InvoiceForecast.findAndCountAll({
+                where: {
+                    forecastType: '3 month',
+                    createdAt: {
+                        [Op.gt]: TODAY_START,
+                        [Op.lt]: TODAY_END
+                    }
+                },
+            });
+
+            billForecasts = await BillForecast.findAndCountAll({
+                where: {
+                    forecastType: '3 month',
+                    createdAt: {
+                        [Op.gt]: TODAY_START,
+                        [Op.lt]: TODAY_END
+                    }
+                },
+            });
+
+        }
+
+
 
         let check = date.clone().subtract(Math.abs(-2), forecastPeriod).startOf(forecastPeriod);
         let month = check.format('MMMM');
 
-        // console.log(invoiceForeacasts.rows)
-        let openingBalances = [{ "month": month, "amount": 0, "currency": "NG", "date": check }, { "month": month, "amount": 0, "currency": "USD", "date": check }];
-        let ngOpeningBalance = 0
-        let usdOpeningBalance = 0
-        for (i = 0; i < invoiceForeacasts.rows.length - 1; i++) {
-            ngOpeningBalance += invoiceForeacasts.rows[i].nairaClosingBalance - billForeacasts.rows[i].nairaClosingBalance;
-            usdOpeningBalance += invoiceForeacasts.rows[i].dollarClosingBalance - billForeacasts.rows[i].dollarClosingBalance;
+        // console.log(invoiceForecasts.rows)
+        let openingBalances = [{ "month": month, "amount": 0, "currency": "NGN", "date": check }, { "month": month, "amount": 0, "currency": "USD", "date": check }];
+        let nairaOpeningBalance = 0
+        let dollarOpeningBalance = 0
+        for (i = 0; i < invoiceForecasts.rows.length - 2; i++) {
+            console.log('invoice to sum', invoiceForecasts.rows[i])
+            let invoiceForeacastClosingBalance = invoiceForecasts.rows[i].currency === 'NGN' ? invoiceForecasts.rows[i].nairaClosingBalance : invoiceForecasts.rows[i].dollarClosingBalance
+            let billForeacastClosingBalance = billForecasts.rows[i].currency === 'NGN' ? billForecasts.rows[i].nairaClosingBalance : billForecasts.rows[i].dollarClosingBalance
 
 
-            let check = moment(invoiceForeacasts.rows[i + 1].month + 1, 'YYYY-MM-DD');
+
+
+
+            let check = moment(invoiceForecasts.rows[i + 2].month, 'YYYY-MM-DD');
 
             let month = check.format('MMMM');
-            openingBalances.push({ "month": month, "amount": ngOpeningBalance, "currency": "NG", "date": check })
-            openingBalances.push({ "month": month, "amount": usdOpeningBalance, "currency": "USD", "date": check })
+            console.log('first currency', invoiceForecasts.rows[i].currency);
+            if (invoiceForecasts.rows[i].currency === 'NGN') {
+                nairaOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
+                openingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+            } else {
+                dollarOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
+                openingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+            }
+
+
 
         }
 
+
         // TODO:: remove this
-       
+
         // loop through opening balance to get cash inflow from invoiced sales total and cash outflow on currennt trade payables total
         for (j = 0; j < openingBalances.length / 2; j++) {
 
             startDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').startOf(forecastPeriod).format('YYYY-MM-DD');
             endDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').endOf(forecastPeriod).format('YYYY-MM-DD')
-
-            console.log('startDate', startDate);
-            console.log('endDate', endDate);
 
             const totalAmountNGN = await Invoice.findAll({
                 attributes: [
@@ -747,8 +1055,6 @@ const openingBalanceHandler = async (req, reply) => {
                 },
             });
 
-            console.log(totalAmountNGN)
-            console.log(totalAmountUSD)
         }
 
 
@@ -775,7 +1081,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         for (const [rowNum, inputData] of openingBalances.entries()) {
 
-            // console.log('row: ', rowNum, ', data', inputData);
+            console.log('row: ', rowNum, ', data', inputData);
             monthRow.getCell(rowNum + 2).value = inputData.month
             currencyRow.getCell(rowNum + 2).value = inputData.currency
             openingBalanceRow.getCell(rowNum + 2).value = inputData.amount
@@ -789,26 +1095,35 @@ const openingBalanceHandler = async (req, reply) => {
         let cashInflowFromInvoiced;
         let totalCashInflowFromOperatingActivities;
         let cashOutflow;
-        let endOfInvoice;
-        let endOfBill;
+        let endOfInvoice = await invoices.count + 7;
+        let endOfBill = await bills.count + await invoices.count + 7;
+
 
         for (const [rowNum, inputData] of invoices.rows.entries()) {
-            // console.log('input data', inputData);
+            // console.log('row number', rowNum);
+            // console.log('input data due date should not change', inputData.dueDate);
             const rowX = sheet.getRow(rowNum + 7)
 
-            let check = moment(inputData.month, 'YYYY-MM-DD');
+            inputData.dueDate = moment(inputData.dueDate, 'YYYY-MM-DD').format('MMMM');
 
-            inputData.month = check.format('MMMM');
+            // console.log('invoice forecast rows', invoiceForecasts.rows.length)
+
+            for (i = 2; i < invoiceForecasts.rows.length + 2; i++) {
+
+                // console.log('invoice due date: ', inputData.dueDate);
+                month = moment(invoiceForecasts.rows[i - 2].month, 'YYYY-MM-DD').format('MMMM');
+
+                if ((inputData.dueDate === month)
+                    && (inputData.currencyCode.toLowerCase() === invoiceForecasts.rows[i - 2].currency.toLowerCase())) {
 
 
-            for (i = 2; i < invoiceForeacasts.length + 2; i++) {
+                    if (inputData.currencyCode.toLowerCase() === 'NGN'.toLowerCase()) {
 
-                if ((inputData.month.toLowerCase() === invoiceForeacasts[i - 2].month.toLowerCase()) && (inputData.currency.toLowerCase() === invoiceForeacasts[i - 2].currency.toLowerCase())) {
-                    if (inputData.currency.toLowerCase() === 'NG'.toLowerCase()) {
                         rowX.getCell(i).value = inputData.balance
                     }
 
-                    if (inputData.currency.toLowerCase() === 'USD'.toLowerCase()) {
+                    if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
+
                         rowX.getCell(i).value = inputData.balance
                     }
                 }
@@ -817,42 +1132,54 @@ const openingBalanceHandler = async (req, reply) => {
 
 
             sheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
-                console.log('row number', rowNumber);
 
                 rowX.getCell(1).value = inputData.customerName;
 
-                endOfInvoice = rowNumber + 1;
+                // endOfInvoice = rowNumber + 1;
 
             });
 
             rowX.commit();
+
         }
         cashInflowFromInvoiced = sheet.getRow(endOfInvoice)
-        totalCashInflowFromOperatingActivities = sheet.getRow(endOfInvoice + 2);
+        totalCashInflowFromOperatingActivities = sheet.getRow(endOfInvoice + 1);
         cashOutflow = sheet.getRow(endOfInvoice + 3)
 
         cashInflowFromInvoiced.getCell(1).value = 'Cash inflow from invoiced sales'
         totalCashInflowFromOperatingActivities.getCell(1).value = 'Total Cash Inflows from Operating Activties'
         cashOutflow.getCell(1).value = 'CASH OUTFLOWS'
 
-        newArray = []
-        console.log(bills.rows);
-        for (const [rowNum, inputData] of bills.rows.entries()) {
+        for (const [rowNum, inputData] of invoiceForecasts.rows.entries()) {
 
-            // console.log('the row is, ' + rowNum + ' input data ', inputData)
-            // console.log(endOfInvoice)
+            if (invoiceForecasts.rows[rowNum].currency === 'NGN') {
+                cashInflowFromInvoiced.getCell(rowNum + 2).value = inputData.nairaClosingBalance
+                totalCashInflowFromOperatingActivities.getCell(rowNum + 2).value = inputData.nairaClosingBalance
+            } else {
+                cashInflowFromInvoiced.getCell(rowNum + 2).value = inputData.dollarClosingBalance
+                totalCashInflowFromOperatingActivities.getCell(rowNum + 2).value = inputData.dollarClosingBalance
+            }
+
+
+            cashInflowFromInvoiced.commit()
+        }
+
+
+        newArray = []
+        for (const [rowNum, inputData] of bills.rows.entries()) {
+            // console.log('row number', rowNum);
+
             const rowX = sheet.getRow(rowNum + endOfInvoice + 4)
 
-            let check = moment(inputData.month, 'YYYY-MM-DD');
+            inputData.dueDate = moment(inputData.dueDate, 'YYYY-MM-DD').format("MMMM");
+            // console.log('invoice forecast rows', invoiceForecasts.rows.length)
+            for (i = 2; i < invoiceForecasts.rows.length + 2; i++) {
+                // console.log('invoice due date: ', inputData.dueDate);
+                month = moment(invoiceForecasts.rows[i - 2].month, 'YYYY-MM-DD').format('MMMM');
+                if ((inputData.dueDate === month)
+                    && (inputData.currencyCode.toLowerCase() === invoiceForecasts.rows[i - 2].currency.toLowerCase())) {
 
-            inputData.month = check.format('MMMM');
-
-
-            for (i = 2; i < invoiceForeacasts.length + 2; i++) {
-                console.log(inputData.month)
-                console.log(invoiceForeacast[i - 2].month)
-                if ((inputData.month.toLowerCase() === invoiceForeacasts[i - 2].month.toLowerCase()) && (inputData.currencyCode.toLowerCase() === invoiceForeacasts[i - 2].currency.toLowerCase())) {
-                    if (inputData.currencyCode.toLowerCase() === 'NG'.toLowerCase()) {
+                    if (inputData.currencyCode.toLowerCase() === 'NGN'.toLowerCase()) {
                         rowX.getCell(i).value = inputData.balance
                     }
 
@@ -866,33 +1193,42 @@ const openingBalanceHandler = async (req, reply) => {
 
             sheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
 
-                // console.log('Row ' + rowNumber);
-                // console.log('is ' +  inputData.title + 'in ' + newArray );
-                // if (newArray.includes(inputData.title)) {
-                //     return;
-                // }
 
-                // if (rowNumber > 6 && (row.values[1] == undefined && row.values[1] != inputData.title)) {
-                // console.log('i got here', inputData.title)
-                // newArray.push(inputData.title);
-                rowX.getCell(1).value = inputData.customerName;
+                rowX.getCell(1).value = inputData.vendorName;
 
                 // }
-                endOfBill = rowNumber;
+                // endOfBill = rowNumber;
 
             });
 
             rowX.commit();
+
         }
 
-        cashOutflowsOnCurrentTradePayables = sheet.getRow(endOfBill + 1);
-        totalCashOutflows = sheet.getRow(endOfBill + 2);
-        netWorkingCapital = sheet.getRow(endOfBill + 4);
+        cashOutflowsOnCurrentTradePayables = sheet.getRow(endOfBill + 4);
+        totalCashOutflows = sheet.getRow(endOfBill + 5);
+        netWorkingCapital = sheet.getRow(endOfBill + 7);
         cashOutflowsOnCurrentTradePayables.getCell(1).value = 'Cash Outflows on Current Trade Payables';
         totalCashOutflows.getCell(1).value = 'Total Cash Outflows';
         netWorkingCapital.getCell(1).value = 'Net Working Capital/(Deficit)';
 
-        await workbook.xlsx.writeFile('di.xlsx')
+
+        for (const [rowNum, inputData] of billForecasts.rows.entries()) {
+
+            if (billForecasts.rows[rowNum].currency === 'NGN') {
+                cashOutflowsOnCurrentTradePayables.getCell(rowNum + 2).value = inputData.nairaClosingBalance
+                totalCashOutflows.getCell(rowNum + 2).value = inputData.nairaClosingBalance
+            } else {
+                cashOutflowsOnCurrentTradePayables.getCell(rowNum + 2).value = inputData.dollarClosingBalance
+                totalCashOutflows.getCell(rowNum + 2).value = inputData.dollarClosingBalance
+            }
+
+
+            cashOutflowsOnCurrentTradePayables.commit()
+        }
+
+
+        await workbook.xlsx.writeFile('latest.xlsx')
 
     } catch (e) {
         console.log(e)

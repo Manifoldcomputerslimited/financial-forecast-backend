@@ -13,7 +13,10 @@ module.exports = (sequelize, DataTypes) => {
         },
         forecastType: {
             type: DataTypes.STRING,
-        } // 1 day, 1 week, 1month, 2month etc
+        }, // 1 day, 1 week, 1month, 2month etc
+        currency: {
+            type: DataTypes.STRING,
+        }
     });
 
     return BillForecast;

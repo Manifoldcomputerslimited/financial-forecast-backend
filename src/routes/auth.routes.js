@@ -27,6 +27,10 @@ const getUsersOpts = {
     handler: authController.getUsersHandler,
 };
 
+const deleteUserOpts = {
+    handler: authController.deleteUserHandler,
+};
+
 const refreshTokenOpts = {
     schema: authSchema.refreshTokenOpts,
     handler: authController.refreshTokenHandler,
@@ -102,6 +106,13 @@ const privateRoutes = async (fastify, options) => {
         preHandler: fastify.auth([verifyToken]),
         ...updatePasswordOpts
     })
+
+    // delete user role
+    fastify.delete("/users/delete/:id", {
+        preHandler: fastify.auth([verifyToken]),
+        ...deleteUserOpts
+    })
+
 }
 
 module.exports = authRoutes;

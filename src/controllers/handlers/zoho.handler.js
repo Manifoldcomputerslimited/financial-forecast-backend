@@ -12,18 +12,10 @@ let moment = require('moment');
 const { Sequelize, invoiceForecasts } = require('../../models');
 moment().format();
 
-const getInvoice = async (options) => {
+const getInvoice = async (options, forecastNumber, forecastPeriod) => {
     let date = moment();
-    let forecastNumber = 3; // get this data from the frontend
-    let forecastPeriod = 'month'; // get this data from the frontend
-
     let startDate
     let endDate
-
-    let invoices = []
-
-
-    // let dollar;
 
     // monthly / yearly forecast
     // TODO::: rework this... only fetch start date and end date. should not be a loop.
@@ -45,7 +37,7 @@ const getInvoice = async (options) => {
             endDate = date.clone().add(Math.abs(i - 2), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
         }
 
-        const filteredItems =  resp.data.invoices.filter((item, index) => item.due_date >= startDate && item.due_date <= endDate);
+        const filteredItems = resp.data.invoices.filter((item, index) => item.due_date >= startDate && item.due_date <= endDate);
 
         dollarClosingBalance = filteredItems.reduce(function (acc, obj) {
 
@@ -104,7 +96,6 @@ const getInvoice = async (options) => {
                 forecastType: `${forecastNumber} ${forecastPeriod}`
             }
 
-            // TODO:: uncomment
             await Invoice.create(
                 payload
             );
@@ -114,17 +105,10 @@ const getInvoice = async (options) => {
 
 }
 
-const getBill = async (options) => {
+const getBill = async (options, forecastNumber, forecastPeriod) => {
     let date = moment();
-    let forecastNumber = 3; // get this data from the frontend
-    let forecastPeriod = 'month'; // get this data from the frontend
-
     let startDate;
     let endDate;
-
-    let bills = [];
-
-
 
     startDate = date.clone().subtract(2, forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
     endDate = date.clone().add(forecastNumber - 1, forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD')
@@ -145,7 +129,7 @@ const getBill = async (options) => {
             endDate = date.clone().add(Math.abs(i - 2), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
         }
 
-        const filteredItems =  resp.data.bills.filter((item, index) => item.due_date >= startDate && item.due_date <= endDate);
+        const filteredItems = resp.data.bills.filter((item, index) => item.due_date >= startDate && item.due_date <= endDate);
 
         dollarClosingBalance = filteredItems.reduce(function (acc, obj) {
 
@@ -214,18 +198,13 @@ const getBill = async (options) => {
 }
 
 
-
 const openingBalanceHandler = async (req, reply) => {
-    console.log('doing great');
     try {
-        let forecastPeriod = 'month';
-        let date = moment();
-        let invoiceBalance;
-        let billsBalance;
-        let zohoAccessToken = req.body.zohoAccessToken;
+        const { forecastPeriod, forecastNumber } = req.body;
+        const date = moment();
+        const zohoAccessToken = req.body.zohoAccessToken;
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
         const TODAY_END = new Date().setHours(23, 59, 59, 999);
-
 
         // let invoices = {
         //     count: 12,
@@ -822,7 +801,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let invoices = await Invoice.findAndCountAll({
             where: {
-                forecastType: '3 month',
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
                     [Op.lt]: TODAY_END
@@ -833,7 +812,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let bills = await Bill.findAndCountAll({
             where: {
-                forecastType: '3 month',
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
                     [Op.lt]: TODAY_END
@@ -847,7 +826,7 @@ const openingBalanceHandler = async (req, reply) => {
         // get invoice forecast where forecastType 
         let invoiceForecasts = await InvoiceForecast.findAndCountAll({
             where: {
-                forecastType: '3 month',
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
                     [Op.lt]: TODAY_END
@@ -857,7 +836,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let billForecasts = await BillForecast.findAndCountAll({
             where: {
-                forecastType: '3 month',
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
                     [Op.lt]: TODAY_END
@@ -865,27 +844,26 @@ const openingBalanceHandler = async (req, reply) => {
             },
         });
 
-        // TODO:: undo later
-   
-        if (!billForecasts.count && !invoiceForecasts.count && !bills.count && !invoices.count) {
-            await getInvoice(options);
 
-            await getBill(options);
+        if (!billForecasts.count && !invoiceForecasts.count && !bills.count && !invoices.count) {
+            await getInvoice(options, forecastNumber, forecastPeriod);
+
+            await getBill(options, forecastNumber, forecastPeriod);
 
             invoices = await Invoice.findAndCountAll({
                 where: {
-                    forecastType: '3 month',
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
                         [Op.lt]: TODAY_END
                     }
                 },
             });
-            console.log('let me call ivoices', await invoices.count);
+
 
             bills = await Bill.findAndCountAll({
                 where: {
-                    forecastType: '3 month',
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
                         [Op.lt]: TODAY_END
@@ -899,7 +877,7 @@ const openingBalanceHandler = async (req, reply) => {
             // get invoice forecast where forecastType 
             invoiceForecasts = await InvoiceForecast.findAndCountAll({
                 where: {
-                    forecastType: '3 month',
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
                         [Op.lt]: TODAY_END
@@ -909,7 +887,7 @@ const openingBalanceHandler = async (req, reply) => {
 
             billForecasts = await BillForecast.findAndCountAll({
                 where: {
-                    forecastType: '3 month',
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
                         [Op.lt]: TODAY_END
@@ -932,10 +910,6 @@ const openingBalanceHandler = async (req, reply) => {
             // console.log('invoice to sum', invoiceForecasts.rows[i])
             let invoiceForeacastClosingBalance = invoiceForecasts.rows[i].currency === 'NGN' ? invoiceForecasts.rows[i].nairaClosingBalance : invoiceForecasts.rows[i].dollarClosingBalance
             let billForeacastClosingBalance = billForecasts.rows[i].currency === 'NGN' ? billForecasts.rows[i].nairaClosingBalance : billForecasts.rows[i].dollarClosingBalance
-
-
-
-
 
             let check = moment(invoiceForecasts.rows[i + 2].month, 'YYYY-MM-DD');
 
@@ -967,7 +941,7 @@ const openingBalanceHandler = async (req, reply) => {
                     [db.sequelize.fn('sum', db.sequelize.col('naira')), 'total_naira_amount'],
                 ],
                 where: {
-                    forecastType: '3 month',
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
                     currencyCode: 'NGN',
                     dueDate: {
                         [Op.gt]: startDate,
@@ -981,7 +955,7 @@ const openingBalanceHandler = async (req, reply) => {
                     [db.sequelize.fn('sum', db.sequelize.col('dollar')), 'total_dollar_amount'],
                 ],
                 where: {
-                    forecastType: '3 month',
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
                     currencyCode: 'USD',
                     dueDate: {
                         [Op.gt]: startDate,
@@ -996,8 +970,6 @@ const openingBalanceHandler = async (req, reply) => {
         // get bills forecast where forecastType
         // opening naira balance + invoice closing bal - bills = agust opening bal
         // sept opening bal + invoice - bills = sept
-
-
 
 
         const workbook = new ExcelJS.Workbook();
@@ -1025,8 +997,7 @@ const openingBalanceHandler = async (req, reply) => {
             currencyRow.commit()
             openingBalanceRow.commit()
         }
-        // idCol.commit()
-        let newArray = []
+
         let cashInflowFromInvoiced;
         let totalCashInflowFromOperatingActivities;
         let cashOutflow;
@@ -1035,13 +1006,9 @@ const openingBalanceHandler = async (req, reply) => {
 
 
         for (const [rowNum, inputData] of invoices.rows.entries()) {
-            // console.log('row number', rowNum);
-            // console.log('input data due date should not change', inputData.dueDate);
             const rowX = sheet.getRow(rowNum + 7)
 
             inputData.dueDate = moment(inputData.dueDate, 'YYYY-MM-DD').format('MMMM');
-
-            // console.log('invoice forecast rows', invoiceForecasts.rows.length)
 
             for (i = 2; i < invoiceForecasts.rows.length + 2; i++) {
 
@@ -1069,8 +1036,6 @@ const openingBalanceHandler = async (req, reply) => {
             sheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
 
                 rowX.getCell(1).value = inputData.customerName;
-
-                // endOfInvoice = rowNumber + 1;
 
             });
 

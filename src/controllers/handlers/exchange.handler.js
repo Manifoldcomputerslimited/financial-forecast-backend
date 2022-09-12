@@ -4,72 +4,80 @@ const { Op } = require('sequelize')
 let moment = require('moment');
 const User = db.users;
 const Rate = db.rates
+const BillForecast = db.billForecasts;
+const InvoiceForecast = db.invoiceForecasts;
+const Invoice = db.invoices;
+const Bill = db.bills;
 
 // Get exchange rate and save into database
-const exchangeRateHandler = async (req, reply) => {
+const getZohoExchangeRateHandler = async (zohoAccessToken, forecastNumber, forecastPeriod) => {
 
-    try {
+    const TODAY_START = new Date().setHours(0, 0, 0, 0);
+    const TODAY_END = new Date().setHours(23, 59, 59, 999);
+    let rate;
 
-        let rate;
-        let zohoAccessToken = req.body.zohoAccessToken;
+    const options = {
+        headers: {
+            'Content-Type': ['application/json'],
+            'Authorization': 'Bearer ' + zohoAccessToken
+        }
+    }
 
-        const options = {
-            headers: {
-                'Content-Type': ['application/json'],
-                'Authorization': 'Bearer ' + zohoAccessToken
+    // check if exchange rate exist in db for the day
+
+    rate = await Rate.findOne({
+        where: {
+            forecastType: `${forecastNumber} ${forecastPeriod}`,
+            updatedAt: {
+                [Op.gt]: TODAY_START,
+                [Op.lt]: TODAY_END
             }
         }
+    })
 
-        // check if exchange rate exist in db
+    // if rate doesn't exist then create the exchange rate from zoho and save to db
+    if (!rate) {
+        url = `${process.env.ZOHO_BOOK_BASE_URL}/settings/currencies/${process.env.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${process.env.ORGANIZATION_ID}`;
 
-        const { count } = await Rate.findAndCountAll();
+        res = await axios.get(url, options);
 
-        if (count < 1) {
-            // if no get create the exchange rate from zoho and save to db
-
-            // TODO:: move this into a single function
-            url = `${process.env.ZOHO_BOOK_BASE_URL}/settings/currencies/${process.env.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${process.env.ORGANIZATION_ID}`;
-
-            res = await axios.get(url, options);
-
-            if (res.data.error)
-                return reply.code(400).send({
-                    status: false,
-                    message: 'Could not fetch exchange rate',
-                });
-
-            // save to db
-            rate = await Rate.create({
-                // currencyId: process.env.DOLLAR_CURRENCY_ID,
-                value: res.data.exchange_rates[0].rate,
+        if (res.data.error)
+            return reply.code(400).send({
+                status: false,
+                message: 'Could not fetch exchange rate',
             });
-        } else {
-            // if yes check if exchange rate has being updated today
-            rate = await Rate.findOne({
-                where: {
-                    updatedAt: {
-                        [Op.gte]: moment().subtract(12, 'hour').toDate()
-                    }
+
+        // save to db
+        rate = await Rate.create({
+            old: res.data.exchange_rates[0].rate,
+            latest: res.data.exchange_rates[0].rate,
+            forecastType: `${forecastNumber} ${forecastPeriod}`
+        });
+    }
+
+    return rate;
+
+}
+
+const getExchangeRateHandler = async (req, reply) => {
+    try {
+        const TODAY_START = new Date().setHours(0, 0, 0, 0);
+        const TODAY_END = new Date().setHours(23, 59, 59, 999);
+
+        let rate = await Rate.findOne({
+            where: {
+                updatedAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
                 }
-            });
-
-            // if yes, return the exchange rate
-            if (!rate) {
-                // if no , get the exchange rate from zoho and update
-                url = `${process.env.ZOHO_BOOK_BASE_URL}/settings/currencies/${process.env.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${process.env.ORGANIZATION_ID}`;
-
-                res = await axios.get(url, options);
-
-                if (res.data.error)
-                    return reply.code(400).send({
-                        status: false,
-                        message: 'Could not fetch exchange rate',
-                    });
-
-                rate = await rate.update({
-                    value: res.data.exchange_rates[0].rate,
-                })
             }
+        })
+
+        if (!rate) {
+            return reply.code(400).send({
+                status: false,
+                message: 'Could not fetch exchange rate',
+            });
         }
 
         statusCode = 200;
@@ -77,6 +85,92 @@ const exchangeRateHandler = async (req, reply) => {
         result = {
             status: true,
             message: 'Exchange rate fetched successfully',
+            data: rate,
+        }
+
+    } catch (e) {
+        statusCode = e.code;
+        result = {
+            status: false,
+            message: e.message,
+        };
+    }
+
+    return reply.status(statusCode).send(result);
+}
+
+const updateExchangeRateHandler = async (req, reply) => {
+
+    try {
+        const TODAY_START = new Date().setHours(0, 0, 0, 0);
+        const TODAY_END = new Date().setHours(23, 59, 59, 999);
+        let { id } = req.params;
+        let { updatedRate, forecastNumber, forecastPeriod } = req.body;
+
+
+        // check if exchange rate exist in db for the day
+        let rate = await Rate.findOne({
+            where: { id }
+        })
+
+        // if rate doesn't exist then create the exchange rate from zoho and save to db
+        if (!rate) {
+            return reply.code(400).send({
+                status: false,
+                message: 'Could not fetch exchange rate',
+            });
+        }
+
+
+        rate = await rate.update({
+            latest: updatedRate,
+        });
+
+        await BillForecast.destroy({
+            where: {
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                updatedAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            }
+        })
+
+        await InvoiceForecast.destroy({
+            where: {
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                updatedAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            }
+        })
+
+        await Bill.destroy({
+            where: {
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                updatedAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            }
+        })
+
+        await Invoice.destroy({
+            where: {
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                updatedAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            }
+        })
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: 'Exchange rate updated successfully',
             data: rate,
         }
     } catch (e) {
@@ -91,4 +185,4 @@ const exchangeRateHandler = async (req, reply) => {
     return reply.status(statusCode).send(result);
 }
 
-module.exports = { exchangeRateHandler }
+module.exports = { getExchangeRateHandler, getZohoExchangeRateHandler, updateExchangeRateHandler }

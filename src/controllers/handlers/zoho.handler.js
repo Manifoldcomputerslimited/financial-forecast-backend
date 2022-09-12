@@ -9,10 +9,10 @@ const BillForecast = db.billForecasts;
 
 
 let moment = require('moment');
-const { Sequelize, invoiceForecasts } = require('../../models');
+const { getZohoExchangeRateHandler } = require('./exchange.handler');
 moment().format();
 
-const getInvoice = async (options, forecastNumber, forecastPeriod) => {
+const getInvoice = async (options, forecastNumber, forecastPeriod, rate) => {
     let date = moment();
     let startDate
     let endDate
@@ -21,11 +21,11 @@ const getInvoice = async (options, forecastNumber, forecastPeriod) => {
     // TODO::: rework this... only fetch start date and end date. should not be a loop.
     startDate = date.clone().subtract(2, forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
     endDate = date.clone().add(forecastNumber - 1, forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD')
-
     // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
     let url = `${process.env.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${process.env.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
 
     resp = await axios.get(url, options);
+
     for (i = 0; i < forecastNumber + 2; i++) {
         if (i <= 1) {
             startDate = date.clone().subtract(Math.abs(i - 2), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
@@ -51,6 +51,9 @@ const getInvoice = async (options, forecastNumber, forecastPeriod) => {
 
             balance = obj.currency_code === 'NGN' ? obj.balance : 0.0
 
+            if (rate.old !== rate.latest) {
+                balance = (balance / rate.old) * rate.latest;
+            }
 
             return acc + balance
         }, 0);
@@ -78,8 +81,13 @@ const getInvoice = async (options, forecastNumber, forecastPeriod) => {
     // TODO:: come up with a better solution. Currently n ^ 2
     for (const [i, e] of resp.data.invoices.entries()) {
 
-
         if (parseFloat(e.balance) > 0) {
+
+            if ((rate.old !== rate.latest) && e.currency_code === 'NGN') {
+                console.log("I am getting here", e.currency_code)
+                e.balance = (e.balance / rate.old) * rate.latest;
+            }
+
             const payload = {
                 invoiceId: e.invoice_id,
                 customerName: e.customer_name,
@@ -105,7 +113,7 @@ const getInvoice = async (options, forecastNumber, forecastPeriod) => {
 
 }
 
-const getBill = async (options, forecastNumber, forecastPeriod) => {
+const getBill = async (options, forecastNumber, forecastPeriod, rate) => {
     let date = moment();
     let startDate;
     let endDate;
@@ -142,6 +150,10 @@ const getBill = async (options, forecastNumber, forecastPeriod) => {
 
             balance = obj.currency_code === 'NGN' ? obj.balance : 0.0
 
+            if (rate.old !== rate.latest) {
+                balance = (balance / rate.old) * rate.latest;
+            }
+
             return acc + balance
         }, 0);
 
@@ -169,8 +181,11 @@ const getBill = async (options, forecastNumber, forecastPeriod) => {
     // TODO:: come up with a better solution. Currently n ^ 2
     for (const [i, e] of resp.data.bills.entries()) {
 
-
         if (parseFloat(e.balance) > 0) {
+
+            if ((rate.old !== rate.latest) && e.currency_code === 'NGN') {
+                e.balance = (e.balance / rate.old) * rate.latest;
+            }
 
             const payload = {
                 billId: e.bill_id,
@@ -797,7 +812,15 @@ const openingBalanceHandler = async (req, reply) => {
                 'Authorization': 'Bearer ' + zohoAccessToken
             }
         }
-        // TODO:: undo later
+
+        let rate = await getZohoExchangeRateHandler(zohoAccessToken, forecastNumber, forecastPeriod);
+
+        if (!rate) {
+            return reply.code(400).send({
+                status: false,
+                message: 'Could not fetch exchange rate',
+            });
+        }
 
         let invoices = await Invoice.findAndCountAll({
             where: {
@@ -846,9 +869,9 @@ const openingBalanceHandler = async (req, reply) => {
 
 
         if (!billForecasts.count && !invoiceForecasts.count && !bills.count && !invoices.count) {
-            await getInvoice(options, forecastNumber, forecastPeriod);
+            await getInvoice(options, forecastNumber, forecastPeriod, rate);
 
-            await getBill(options, forecastNumber, forecastPeriod);
+            await getBill(options, forecastNumber, forecastPeriod, rate);
 
             invoices = await Invoice.findAndCountAll({
                 where: {
@@ -1128,7 +1151,7 @@ const openingBalanceHandler = async (req, reply) => {
         }
 
 
-        await workbook.xlsx.writeFile('latest.xlsx')
+        await workbook.xlsx.writeFile('doings.xlsx')
 
     } catch (e) {
         console.log(e)

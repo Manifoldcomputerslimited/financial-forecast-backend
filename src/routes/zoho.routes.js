@@ -12,7 +12,11 @@ const refreshZohoTokenOpts = {
 }
 
 const exchangeRateOpts = {
-    handler: exchangeController.exchangeRateHandler,
+    handler: exchangeController.getExchangeRateHandler,
+}
+
+const updateExchangeRateOpts = {
+    handler: exchangeController.updateExchangeRateHandler,
 }
 
 const openingBalanceOpts = {
@@ -34,6 +38,11 @@ const privateRoutes = async (fastify, options) => {
     fastify.post('/zoho/exchange/rate', {
         preHandler: fastify.auth([verifyToken]),
         ...exchangeRateOpts
+    });
+
+    fastify.put('/zoho/exchange/rate/:id', {
+        preHandler: fastify.auth([verifyToken]),
+        ...updateExchangeRateOpts
     });
 
     // generate opening balance from zoho

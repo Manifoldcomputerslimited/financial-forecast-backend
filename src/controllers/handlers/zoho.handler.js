@@ -215,7 +215,7 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate) => {
 
 const openingBalanceHandler = async (req, reply) => {
     try {
-        const { forecastPeriod, forecastNumber } = req.body;
+        const { forecastNumber, forecastPeriod } = req.body;
         const date = moment();
         const zohoAccessToken = req.body.zohoAccessToken;
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
@@ -927,10 +927,11 @@ const openingBalanceHandler = async (req, reply) => {
 
         // console.log(invoiceForecasts.rows)
         let openingBalances = [{ "month": month, "amount": 0, "currency": "NGN", "date": check }, { "month": month, "amount": 0, "currency": "USD", "date": check }];
+        let closingBalances = [];
         let nairaOpeningBalance = 0
         let dollarOpeningBalance = 0
         for (i = 0; i < invoiceForecasts.rows.length - 2; i++) {
-            // console.log('invoice to sum', invoiceForecasts.rows[i])
+            //console.log('invoice to sum', invoiceForecasts.rows[i])
             let invoiceForeacastClosingBalance = invoiceForecasts.rows[i].currency === 'NGN' ? invoiceForecasts.rows[i].nairaClosingBalance : invoiceForecasts.rows[i].dollarClosingBalance
             let billForeacastClosingBalance = billForecasts.rows[i].currency === 'NGN' ? billForecasts.rows[i].nairaClosingBalance : billForecasts.rows[i].dollarClosingBalance
 
@@ -941,21 +942,21 @@ const openingBalanceHandler = async (req, reply) => {
             if (invoiceForecasts.rows[i].currency === 'NGN') {
                 nairaOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
                 openingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+                closingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
             } else {
                 dollarOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
                 openingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+                closingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
             }
-
-
-
         }
+
 
 
         // TODO:: remove this
 
         // loop through opening balance to get cash inflow from invoiced sales total and cash outflow on currennt trade payables total
         for (j = 0; j < openingBalances.length / 2; j++) {
-
+            console.log('doing');
             startDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').startOf(forecastPeriod).format('YYYY-MM-DD');
             endDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').endOf(forecastPeriod).format('YYYY-MM-DD')
 
@@ -995,6 +996,185 @@ const openingBalanceHandler = async (req, reply) => {
         // sept opening bal + invoice - bills = sept
 
 
+
+    } catch (e) {
+        console.log(e)
+        statusCode = e.response.status;
+        result = {
+            status: false,
+            message: e.response.data.message,
+        };
+    }
+
+    return reply.status(statusCode).send(result);
+}
+
+const downloadReportHandler = async (req, reply) => {
+    let buffer;
+    try {
+
+        const { forecastNumber, forecastPeriod } = req.body;
+        const date = moment();
+        const zohoAccessToken = req.body.zohoAccessToken;
+        const TODAY_START = new Date().setHours(0, 0, 0, 0);
+        const TODAY_END = new Date().setHours(23, 59, 59, 999);
+
+
+        const options = {
+            headers: {
+                'Content-Type': ['application/json'],
+                'Authorization': 'Bearer ' + zohoAccessToken
+            }
+        }
+
+        let rate = await getZohoExchangeRateHandler(zohoAccessToken, forecastNumber, forecastPeriod);
+
+        if (!rate) {
+            return reply.code(400).send({
+                status: false,
+                message: 'Could not fetch exchange rate',
+            });
+        }
+
+        let invoices = await Invoice.findAndCountAll({
+            where: {
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                createdAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            },
+        });
+        // console.log('let me call ivoices', await invoices.count);
+
+        let bills = await Bill.findAndCountAll({
+            where: {
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                createdAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            },
+        });
+
+
+
+        // opening balance for july will be 0 USD, NG
+        // get invoice forecast where forecastType 
+        let invoiceForecasts = await InvoiceForecast.findAndCountAll({
+            where: {
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                createdAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            },
+        });
+
+        let billForecasts = await BillForecast.findAndCountAll({
+            where: {
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+                createdAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            },
+        });
+
+
+        if (!billForecasts.count && !invoiceForecasts.count && !bills.count && !invoices.count) {
+            await getInvoice(options, forecastNumber, forecastPeriod, rate);
+
+            await getBill(options, forecastNumber, forecastPeriod, rate);
+
+            invoices = await Invoice.findAndCountAll({
+                where: {
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
+                    createdAt: {
+                        [Op.gt]: TODAY_START,
+                        [Op.lt]: TODAY_END
+                    }
+                },
+            });
+
+
+            bills = await Bill.findAndCountAll({
+                where: {
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
+                    createdAt: {
+                        [Op.gt]: TODAY_START,
+                        [Op.lt]: TODAY_END
+                    }
+                },
+            });
+
+
+
+            // opening balance for july will be 0 USD, NG
+            // get invoice forecast where forecastType 
+            invoiceForecasts = await InvoiceForecast.findAndCountAll({
+                where: {
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
+                    createdAt: {
+                        [Op.gt]: TODAY_START,
+                        [Op.lt]: TODAY_END
+                    }
+                },
+            });
+
+            billForecasts = await BillForecast.findAndCountAll({
+                where: {
+                    forecastType: `${forecastNumber} ${forecastPeriod}`,
+                    createdAt: {
+                        [Op.gt]: TODAY_START,
+                        [Op.lt]: TODAY_END
+                    }
+                },
+            });
+
+        }
+
+
+
+        let check = date.clone().subtract(Math.abs(-2), forecastPeriod).startOf(forecastPeriod);
+        let month = check.format('MMMM');
+
+        // console.log(invoiceForecasts.rows)
+        let openingBalances = [{ "month": month, "amount": 0, "currency": "NGN", "date": check }, { "month": month, "amount": 0, "currency": "USD", "date": check }];
+        let closingBalances = [];
+        let nairaOpeningBalance = 0
+        let dollarOpeningBalance = 0
+        for (i = 0; i < invoiceForecasts.rows.length - 2; i++) {
+            //console.log('invoice to sum', invoiceForecasts.rows[i])
+            let invoiceForeacastClosingBalance = invoiceForecasts.rows[i].currency === 'NGN' ? invoiceForecasts.rows[i].nairaClosingBalance : invoiceForecasts.rows[i].dollarClosingBalance
+            let billForeacastClosingBalance = billForecasts.rows[i].currency === 'NGN' ? billForecasts.rows[i].nairaClosingBalance : billForecasts.rows[i].dollarClosingBalance
+
+            let check = moment(invoiceForecasts.rows[i + 2].month, 'YYYY-MM-DD');
+
+            let month = check.format('MMMM');
+            // console.log('first currency', invoiceForecasts.rows[i].currency);
+            if (invoiceForecasts.rows[i].currency === 'NGN') {
+                nairaOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
+                openingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+                closingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+            } else {
+                dollarOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
+                openingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+                closingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+            }
+        }
+
+
+
+        // TODO:: remove this
+
+        // loop through opening balance to get cash inflow from invoiced sales total and cash outflow on currennt trade payables total
+        for (j = 0; j < openingBalances.length / 2; j++) {
+            console.log('doing');
+            startDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').startOf(forecastPeriod).format('YYYY-MM-DD');
+            endDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').endOf(forecastPeriod).format('YYYY-MM-DD')
+
+        }
         const workbook = new ExcelJS.Workbook();
         workbook.calcProperties.fullCalcOnLoad = true;
         const sheet = workbook.addWorksheet('My Sheet');
@@ -1133,7 +1313,7 @@ const openingBalanceHandler = async (req, reply) => {
         netWorkingCapital = sheet.getRow(endOfBill + 7);
         cashOutflowsOnCurrentTradePayables.getCell(1).value = 'Cash Outflows on Current Trade Payables';
         totalCashOutflows.getCell(1).value = 'Total Cash Outflows';
-        netWorkingCapital.getCell(1).value = 'Net Working Capital/(Deficit)';
+
 
 
         for (const [rowNum, inputData] of billForecasts.rows.entries()) {
@@ -1150,19 +1330,40 @@ const openingBalanceHandler = async (req, reply) => {
             cashOutflowsOnCurrentTradePayables.commit()
         }
 
+        netWorkingCapital.getCell(1).value = 'Net Working Capital/(Deficit)';
+        const closingBalanceRow = netWorkingCapital
 
-        await workbook.xlsx.writeFile('doings.xlsx')
+        for (const [rowNum, inputData] of closingBalances.entries()) {
+
+            closingBalanceRow.getCell(rowNum + 2).value = inputData.amount
+
+            closingBalanceRow.commit()
+        }
+
+        // await workbook.xlsx.writeFile('doings.xlsx')
+
+        const fileName = `logs${date}.xlsx`
+
+        reply.header(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        reply.header('Content-Disposition', 'attachment; filename=' + fileName)
+        buffer = await workbook.xlsx.writeBuffer()
+     
+          statusCode = 200;
+        // result = {
+        //     status: true,
+        //     message: 'Sales fetched successfully',
+        //     data: buffer,
+        // }
+
 
     } catch (e) {
-        console.log(e)
-        // statusCode = e.response.status;
-        // result = {
-        //     status: false,
-        //     message: e.response.data.message,
-        // };
+
     }
 
-    // return reply.status(statusCode).send(result);
+    return reply.status(statusCode).send(buffer);
 }
 
 
@@ -1213,4 +1414,4 @@ const salesOrderHandler = async (req, reply) => {
 }
 
 
-module.exports = { openingBalanceHandler, salesOrderHandler }
+module.exports = { openingBalanceHandler, salesOrderHandler, downloadReportHandler }

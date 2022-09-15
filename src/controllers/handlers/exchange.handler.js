@@ -61,11 +61,13 @@ const getZohoExchangeRateHandler = async (zohoAccessToken, forecastNumber, forec
 
 const getExchangeRateHandler = async (req, reply) => {
     try {
+        const { number, period } = req.params
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
         const TODAY_END = new Date().setHours(23, 59, 59, 999);
 
         let rate = await Rate.findOne({
             where: {
+                forecastType: number + ' ' + period,
                 updatedAt: {
                     [Op.gt]: TODAY_START,
                     [Op.lt]: TODAY_END
@@ -89,6 +91,7 @@ const getExchangeRateHandler = async (req, reply) => {
         }
 
     } catch (e) {
+        console.log(e)
         statusCode = e.code;
         result = {
             status: false,
@@ -105,12 +108,14 @@ const updateExchangeRateHandler = async (req, reply) => {
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
         const TODAY_END = new Date().setHours(23, 59, 59, 999);
         let { id } = req.params;
-        let { updatedRate, forecastNumber, forecastPeriod } = req.body;
+        let { latest, forecastNumber, forecastPeriod } = req.body;
 
 
         // check if exchange rate exist in db for the day
         let rate = await Rate.findOne({
-            where: { id }
+            where: {
+                id
+            }
         })
 
         // if rate doesn't exist then create the exchange rate from zoho and save to db
@@ -123,7 +128,7 @@ const updateExchangeRateHandler = async (req, reply) => {
 
 
         rate = await rate.update({
-            latest: updatedRate,
+            latest
         });
 
         await BillForecast.destroy({

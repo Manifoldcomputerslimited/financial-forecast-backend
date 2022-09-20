@@ -1277,12 +1277,12 @@ const downloadReportHandler = async (req, reply) => {
 
         // get last item from opening balance
         let dollarLastOpeningBalance = openingBalances.at(-1);
-       
+
         let nairaLastOpeningBalance = openingBalances.at(-2);
         // get last item from invoiceForecasts
         let dollarLastInvoice = invoiceForecasts.rows.at(-1);
         let nairaLastInvoice = invoiceForecasts.rows.at(-2);
-       
+
         // get last item from billForecasts
         let dollarLastBill = billForecasts.rows.at(-1);
         let nairaLastBill = billForecasts.rows.at(-2);
@@ -1327,6 +1327,21 @@ const downloadReportHandler = async (req, reply) => {
             currencyRow.commit()
             openingBalanceRow.commit()
         }
+        let openingBalanceLength = openingBalances.length;
+        monthRow.getCell(openingBalanceLength + 2).value = 'Total'
+        monthRow.getCell(openingBalanceLength + 3).value = 'Total'
+        monthRow.getCell(openingBalanceLength + 5).value = 'Rate'
+
+        currencyRow.getCell(openingBalanceLength + 2).value = 'NGN'
+        currencyRow.getCell(openingBalanceLength + 3).value = 'USD Exposure'
+        currencyRow.getCell(openingBalanceLength + 5).value = rate.latest
+
+        openingBalanceRow.getCell(openingBalanceLength + 2).value = initialOpeningBalance.nairaOpeningBalance
+        openingBalanceRow.getCell(openingBalanceLength + 3).value = initialOpeningBalance.dollarOpeningBalance
+
+        monthRow.commit()
+        currencyRow.commit()
+        openingBalanceRow.commit()
 
         let cashInflowFromInvoiced;
         let totalCashInflowFromOperatingActivities;
@@ -1379,13 +1394,16 @@ const downloadReportHandler = async (req, reply) => {
         cashInflowFromInvoiced.getCell(1).value = 'Cash inflow from invoiced sales'
         totalCashInflowFromOperatingActivities.getCell(1).value = 'Total Cash Inflows from Operating Activties'
         cashOutflow.getCell(1).value = 'CASH OUTFLOWS'
-
+        let totalNairaClosingBalance = 0.0;
+        let totalDollarClosingBalance = 0.0;
         for (const [rowNum, inputData] of invoiceForecasts.rows.entries()) {
 
             if (invoiceForecasts.rows[rowNum].currency === 'NGN') {
+                totalNairaClosingBalance = totalNairaClosingBalance + parseFloat(inputData.nairaClosingBalance)
                 cashInflowFromInvoiced.getCell(rowNum + 2).value = inputData.nairaClosingBalance
                 totalCashInflowFromOperatingActivities.getCell(rowNum + 2).value = inputData.nairaClosingBalance
             } else {
+                totalDollarClosingBalance = totalDollarClosingBalance + parseFloat(inputData.dollarClosingBalance)
                 cashInflowFromInvoiced.getCell(rowNum + 2).value = inputData.dollarClosingBalance
                 totalCashInflowFromOperatingActivities.getCell(rowNum + 2).value = inputData.dollarClosingBalance
             }
@@ -1394,6 +1412,15 @@ const downloadReportHandler = async (req, reply) => {
             cashInflowFromInvoiced.commit()
         }
 
+
+        let invoiceForecastsLength = invoiceForecasts.rows.length;
+        cashInflowFromInvoiced.getCell(invoiceForecastsLength + 2).value = totalNairaClosingBalance
+        cashInflowFromInvoiced.getCell(invoiceForecastsLength + 3).value = totalDollarClosingBalance
+        totalCashInflowFromOperatingActivities.getCell(invoiceForecastsLength + 2).value = totalNairaClosingBalance
+        totalCashInflowFromOperatingActivities.getCell(invoiceForecastsLength + 3).value = totalDollarClosingBalance
+
+        cashInflowFromInvoiced.commit()
+        totalCashInflowFromOperatingActivities.commit()
 
         newArray = []
         for (const [rowNum, inputData] of bills.rows.entries()) {
@@ -1441,14 +1468,21 @@ const downloadReportHandler = async (req, reply) => {
         cashOutflowsOnCurrentTradePayables.getCell(1).value = 'Cash Outflows on Current Trade Payables';
         totalCashOutflows.getCell(1).value = 'Total Cash Outflows';
 
-
+        let totalNairaCashOutflowsOnCurrentTradePayables = 0.0;
+        let totalNairaCashOutflows = 0.0;
+        let totalDollarCashOutflowsOnCurrentTradePayables = 0.0;
+        let totalDollarCashOutflows = 0.0;
 
         for (const [rowNum, inputData] of billForecasts.rows.entries()) {
 
             if (billForecasts.rows[rowNum].currency === 'NGN') {
+                totalNairaCashOutflowsOnCurrentTradePayables += parseFloat(inputData.nairaClosingBalance)
+                totalNairaCashOutflows += parseFloat(inputData.nairaClosingBalance)
                 cashOutflowsOnCurrentTradePayables.getCell(rowNum + 2).value = inputData.nairaClosingBalance
                 totalCashOutflows.getCell(rowNum + 2).value = inputData.nairaClosingBalance
             } else {
+                totalDollarCashOutflowsOnCurrentTradePayables += parseFloat(inputData.dollarClosingBalance)
+                totalDollarCashOutflows += parseFloat(inputData.dollarClosingBalance)
                 cashOutflowsOnCurrentTradePayables.getCell(rowNum + 2).value = inputData.dollarClosingBalance
                 totalCashOutflows.getCell(rowNum + 2).value = inputData.dollarClosingBalance
             }
@@ -1456,6 +1490,16 @@ const downloadReportHandler = async (req, reply) => {
 
             cashOutflowsOnCurrentTradePayables.commit()
         }
+
+        let billForecastsLength = billForecasts.rows.length;
+        cashOutflowsOnCurrentTradePayables.getCell(billForecastsLength + 2).value = totalNairaCashOutflowsOnCurrentTradePayables
+        totalCashOutflows.getCell(billForecastsLength + 2).value = totalNairaCashOutflows
+
+        cashOutflowsOnCurrentTradePayables.getCell(billForecastsLength + 3).value = totalDollarCashOutflowsOnCurrentTradePayables
+        totalCashOutflows.getCell(billForecastsLength + 3).value = totalDollarCashOutflows
+
+        cashOutflowsOnCurrentTradePayables.commit()
+        totalCashOutflows.commit()
 
         netWorkingCapital.getCell(1).value = 'Net Working Capital/(Deficit)';
         const closingBalanceRow = netWorkingCapital
@@ -1467,27 +1511,37 @@ const downloadReportHandler = async (req, reply) => {
             closingBalanceRow.commit()
         }
 
+        // nairaNetWorkingCapital
+        let totalNairaNetWorkingCapital = parseFloat(initialOpeningBalance.nairaOpeningBalance) + parseFloat(totalNairaClosingBalance) - parseFloat(totalNairaCashOutflows)
+        // dollarNetWorkingCapital
+        let totalDollarNetWorkingCapital = parseFloat(initialOpeningBalance.dollarOpeningBalance) + parseFloat(totalDollarClosingBalance) - parseFloat(totalDollarCashOutflows)
+
+        netWorkingCapital.getCell(closingBalances.length + 2).value = totalNairaNetWorkingCapital
+        netWorkingCapital.getCell(closingBalances.length + 3).value = totalDollarNetWorkingCapital
+
         // await workbook.xlsx.writeFile('doings.xlsx')
 
-        const fileName = `logs${date}.xlsx`
+        // const fileName = `logs${date}.xlsx`
 
-        reply.header(
-            'Content-Type',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        reply.header('Content-Disposition', 'attachment; filename=' + fileName)
+        // reply.header(
+        //     'Content-Type',
+        //     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        // )
+        // reply.header('Content-Disposition', 'attachment; filename=' + fileName)
         buffer = await workbook.xlsx.writeBuffer()
 
         statusCode = 200;
-        // result = {
-        //     status: true,
-        //     message: 'Sales fetched successfully',
-        //     data: buffer,
-        // }
-
+        result = {
+            status: true,
+            message: 'Download successful'
+        }
 
     } catch (e) {
-        console.log(e);
+        statusCode = e.response.status;
+        result = {
+            status: false,
+            message: e.response.data.message,
+        };
     }
 
     return reply.status(statusCode).send(buffer);

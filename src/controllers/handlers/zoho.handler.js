@@ -1028,16 +1028,39 @@ const openingBalanceHandler = async (req, reply) => {
             let month = check.format('MMMM');
             // console.log('first currency', invoiceForecasts.rows[i].currency);
             if (invoiceForecasts.rows[i].currency === 'NGN') {
-                nairaOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
+                nairaOpeningBalance += parseFloat(invoiceForeacastClosingBalance) - parseFloat(billForeacastClosingBalance)
                 openingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
                 closingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
             } else {
-                dollarOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
+                dollarOpeningBalance += parseFloat(invoiceForeacastClosingBalance) - parseFloat(billForeacastClosingBalance)
                 openingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
                 closingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
             }
         }
 
+
+        // Last Closing balance
+        check = date.clone().add(Math.abs(forecastNumber), forecastPeriod).startOf(forecastPeriod);
+        month = check.format('MMMM');
+
+        // get last item from opening balance
+        let dollarLastOpeningBalance = openingBalances.at(-1);
+
+        let nairaLastOpeningBalance = openingBalances.at(-2);
+        // get last item from invoiceForecasts
+        let dollarLastInvoice = invoiceForecasts.rows.at(-1);
+        let nairaLastInvoice = invoiceForecasts.rows.at(-2);
+
+        // get last item from billForecasts
+        let dollarLastBill = billForecasts.rows.at(-1);
+        let nairaLastBill = billForecasts.rows.at(-2);
+
+        let lastDollarClosingBalance = parseFloat(dollarLastOpeningBalance.amount) + parseFloat(dollarLastInvoice.dollarClosingBalance) - parseFloat(dollarLastBill.dollarClosingBalance);
+        let lastNairaClosingBalance = parseFloat(nairaLastOpeningBalance.amount) + parseFloat(nairaLastInvoice.nairaClosingBalance) - parseFloat(nairaLastBill.nairaClosingBalance);
+        // then push to closing Balance
+
+        closingBalances.push({ "month": month, "amount": lastNairaClosingBalance, "currency": "NGN", "date": check })
+        closingBalances.push({ "month": month, "amount": lastDollarClosingBalance, "currency": "USD", "date": check })
 
 
         // TODO:: remove this
@@ -1048,43 +1071,92 @@ const openingBalanceHandler = async (req, reply) => {
             startDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').startOf(forecastPeriod).format('YYYY-MM-DD');
             endDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').endOf(forecastPeriod).format('YYYY-MM-DD')
 
-            const totalAmountNGN = await Invoice.findAll({
-                attributes: [
-                    [db.sequelize.fn('sum', db.sequelize.col('naira')), 'total_naira_amount'],
-                ],
-                where: {
-                    forecastType: `${forecastNumber} ${forecastPeriod}`,
-                    currencyCode: 'NGN',
-                    dueDate: {
-                        [Op.gt]: startDate,
-                        [Op.lt]: endDate
-                    }
-                },
-            });
+            // const totalAmountNGN = await Invoice.findAll({
+            //     attributes: [
+            //         [db.sequelize.fn('sum', db.sequelize.col('naira')), 'total_naira_amount'],
+            //     ],
+            //     where: {
+            //         forecastType: `${forecastNumber} ${forecastPeriod}`,
+            //         currencyCode: 'NGN',
+            //         dueDate: {
+            //             [Op.gt]: startDate,
+            //             [Op.lt]: endDate
+            //         }
+            //     },
+            // });
 
-            const totalAmountUSD = await Invoice.findAll({
-                attributes: [
-                    [db.sequelize.fn('sum', db.sequelize.col('dollar')), 'total_dollar_amount'],
-                ],
-                where: {
-                    forecastType: `${forecastNumber} ${forecastPeriod}`,
-                    currencyCode: 'USD',
-                    dueDate: {
-                        [Op.gt]: startDate,
-                        [Op.lt]: endDate
-                    }
-                },
-            });
+            // const totalAmountUSD = await Invoice.findAll({
+            //     attributes: [
+            //         [db.sequelize.fn('sum', db.sequelize.col('dollar')), 'total_dollar_amount'],
+            //     ],
+            //     where: {
+            //         forecastType: `${forecastNumber} ${forecastPeriod}`,
+            //         currencyCode: 'USD',
+            //         dueDate: {
+            //             [Op.gt]: startDate,
+            //             [Op.lt]: endDate
+            //         }
+            //     },
+            // });
 
         }
 
+        let totalNairaCashInflow = 0.0;
+        let totalDollarCashInflow = 0.0;
+        let totalNairaCashOutflow = 0.0;
+        let totalDollarCashOutflow = 0.0;
 
+        for (const [rowNum, inputData] of invoiceForecasts.rows.entries()) {
+
+            if (invoiceForecasts.rows[rowNum].currency === 'NGN') {
+                totalNairaCashInflow += parseFloat(inputData.nairaClosingBalance)
+            } else {
+                totalDollarCashInflow += parseFloat(inputData.dollarClosingBalance)
+            }
+
+        }
+
+        for (const [rowNum, inputData] of billForecasts.rows.entries()) {
+
+            if (billForecasts.rows[rowNum].currency === 'NGN') {
+                totalNairaCashOutflow += parseFloat(inputData.nairaClosingBalance)
+
+            } else {
+                totalDollarCashOutflow += parseFloat(inputData.dollarClosingBalance)
+
+            }
+
+        }
+
+        // nairaNetWorkingCapital
+        let totalNairaNetWorkingCapital = parseFloat(initialOpeningBalance.nairaOpeningBalance) + parseFloat(totalNairaCashInflow) - parseFloat(totalNairaCashOutflow)
+        // dollarNetWorkingCapital
+        let totalDollarNetWorkingCapital = parseFloat(initialOpeningBalance.dollarOpeningBalance) + parseFloat(totalDollarCashInflow) - parseFloat(totalDollarCashOutflow)
 
         statusCode = 200;
         result = {
             status: true,
             data: {
-
+                report: {
+                    openingBalance: {
+                        naira: initialOpeningBalance.nairaOpeningBalance,
+                        dollar: initialOpeningBalance.dollarOpeningBalance
+                    },
+                    totalCashInflow: {
+                        naira: totalNairaCashInflow,
+                        dollar: totalDollarCashInflow
+                    },
+                    totalCashOutflow: {
+                        naira: totalNairaCashOutflow,
+                        dollar: totalDollarCashOutflow
+                    },
+                    networkingCapital: {
+                        naira: totalNairaNetWorkingCapital,
+                        dollar: totalDollarNetWorkingCapital
+                    }
+                },
+                invoices: invoices.rows,
+                bills: bills.rows
             }
         }
 
@@ -1261,11 +1333,11 @@ const downloadReportHandler = async (req, reply) => {
             let month = check.format('MMMM');
             // console.log('first currency', invoiceForecasts.rows[i].currency);
             if (invoiceForecasts.rows[i].currency === 'NGN') {
-                nairaOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
+                nairaOpeningBalance += parseFloat(invoiceForeacastClosingBalance) - parseFloat(billForeacastClosingBalance)
                 openingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
                 closingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
             } else {
-                dollarOpeningBalance += invoiceForeacastClosingBalance - billForeacastClosingBalance
+                dollarOpeningBalance += parseFloat(invoiceForeacastClosingBalance) - parseFloat(billForeacastClosingBalance)
                 openingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
                 closingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
             }

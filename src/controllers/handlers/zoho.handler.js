@@ -6,7 +6,7 @@ const Invoice = db.invoices;
 const InvoiceForecast = db.invoiceForecasts;
 const Bill = db.bills;
 const BillForecast = db.billForecasts;
-const InitialBalance = db.initialBalance;
+const InitialBalance = db.initialBalances;
 
 
 let moment = require('moment');

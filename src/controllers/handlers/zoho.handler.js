@@ -1155,8 +1155,8 @@ const openingBalanceHandler = async (req, reply) => {
                         dollar: totalDollarNetWorkingCapital
                     }
                 },
-                invoices: invoices.rows,
-                bills: bills.rows
+                invoices: invoices.rows.reverse(),
+                bills: bills.rows.reverse()
             }
         }
 

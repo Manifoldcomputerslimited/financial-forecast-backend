@@ -60,7 +60,7 @@ const generateZohoTokenHandler = async (req, reply) => {
                 });
             }
 
-            url = `${process.env.ZOHO_BASE_URL}?code=${code}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&redirect_uri=http://localhost:3000&grant_type=authorization_code`;
+            url = `${process.env.ZOHO_BASE_URL}?code=${code}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&redirect_uri=${process.env.BASE_URL}&grant_type=authorization_code`;
 
             resp = await axios.post(url,
                 options)

@@ -6,7 +6,7 @@ const Invoice = db.invoices;
 const InvoiceForecast = db.invoiceForecasts;
 const Bill = db.bills;
 const BillForecast = db.billForecasts;
-const InitialBalance = db.initialBalance;
+const InitialBalance = db.initialBalances;
 
 
 let moment = require('moment');
@@ -1155,8 +1155,8 @@ const openingBalanceHandler = async (req, reply) => {
                         dollar: totalDollarNetWorkingCapital
                     }
                 },
-                invoices: invoices.rows,
-                bills: bills.rows
+                invoices: invoices.rows.reverse(),
+                bills: bills.rows.reverse()
             }
         }
 

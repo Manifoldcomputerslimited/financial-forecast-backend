@@ -8,6 +8,7 @@ const BillForecast = db.billForecasts;
 const InvoiceForecast = db.invoiceForecasts;
 const Invoice = db.invoices;
 const Bill = db.bills;
+const InitialBalance = db.initialBalances;
 
 // Get exchange rate and save into database
 const getZohoExchangeRateHandler = async (zohoAccessToken, forecastNumber, forecastPeriod) => {
@@ -130,6 +131,15 @@ const updateExchangeRateHandler = async (req, reply) => {
         rate = await rate.update({
             latest
         });
+
+        await InitialBalance.destroy({
+            where: {
+                updatedAt: {
+                    [Op.gt]: TODAY_START,
+                    [Op.lt]: TODAY_END
+                }
+            }
+        })
 
         await BillForecast.destroy({
             where: {

@@ -203,7 +203,7 @@ const registerUserHandler = async (req, reply) => {
             url: `http://localhost:3000/`,
         }
 
-        await sendEmail(email, "Manifold Forecast Signup", "Registration completed", details);
+        sendEmail(email, "Manifold Forecast Signup", "Registration completed", details);
 
         statusCode = 201;
 

@@ -68,7 +68,7 @@ const inviteUserHandler = async (req, reply) => {
         const details = {
             name: 'User',
             templateToUse: "invite",
-            url: `http://localhost:3000/register/${updatedCipherText}`,
+            url: `${process.env.BASE_URL}/register/${updatedCipherText}`,
         }
 
         // invite user by sending an email
@@ -200,7 +200,7 @@ const registerUserHandler = async (req, reply) => {
         const details = {
             name: `${firstName} ${lastName}`,
             templateToUse: "signup",
-            url: `http://localhost:3000/`,
+            url: `${process.env.BASE_URL}`,
         }
 
         sendEmail(email, "Manifold Forecast Signup", "Registration completed", details);
@@ -450,7 +450,7 @@ const forgotPasswordHandler = async (req, reply) => {
         const details = {
             name: userExists.firstName,
             templateToUse: "passwordReset",
-            url: `http://localhost:3000/reset-password/${updatedCipherText}`,
+            url: `${process.env.BASE_URL}/reset-password/${updatedCipherText}`,
         }
 
         console.log(details)

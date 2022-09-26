@@ -5,6 +5,7 @@ const Token = db.tokens
 const dayjs = require('dayjs')
 var utc = require('dayjs/plugin/utc')
 var timezone = require('dayjs/plugin/timezone')
+const config = require('../../../config');
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -60,7 +61,7 @@ const generateZohoTokenHandler = async (req, reply) => {
                 });
             }
 
-            url = `${process.env.ZOHO_BASE_URL}?code=${code}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&redirect_uri=${process.env.BASE_URL}&grant_type=authorization_code`;
+            url = `${config.ZOHO_BASE_URL}?code=${code}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.BASE_URL}&grant_type=authorization_code`;
 
             resp = await axios.post(url,
                 options)
@@ -84,7 +85,7 @@ const generateZohoTokenHandler = async (req, reply) => {
            
         } else {
             console.log('refreshing user')
-            url = `${process.env.ZOHO_BASE_URL}?refresh_token=${zohoToken.zohoRefreshToken}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&redirect_uri=${process.env.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
+            url = `${config.ZOHO_BASE_URL}?refresh_token=${zohoToken.zohoRefreshToken}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
 
             resp = await axios.post(url,
                 options)
@@ -156,7 +157,7 @@ const refreshZohoTokenHandler = async (req, reply) => {
             });
         }
 
-        url = `${process.env.ZOHO_BASE_URL}?refresh_token=${zohoToken.zohoRefreshToken}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&redirect_uri=${process.env.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
+        url = `${config.ZOHO_BASE_URL}?refresh_token=${zohoToken.zohoRefreshToken}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
 
         resp = await axios.post(url,
             options)

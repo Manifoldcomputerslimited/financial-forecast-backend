@@ -1,15 +1,16 @@
 require('dotenv').config()
 const Sequelize = require("sequelize");
+const  config  = require('../../config');
 
 let sequelize;
 
 sequelize = new Sequelize(
-    `${process.env.MYSQL_DATABASE}`,
-    `${process.env.MYSQL_USERNAME}`,
-    process.env.MYSQL_ROOT_PASSWORD,
+    `${config.MYSQL_DATABASE}`,
+    `${config.MYSQL_USERNAME}`,
+    config.MYSQL_ROOT_PASSWORD,
     {
-        host: process.env.MYSQL_HOST,
-        port: process.env.MYSQL_DOCKER_PORT,
+        host: config.MYSQL_HOST,
+        port: config.MYSQL_DOCKER_PORT,
         dialect: "mysql",
         operatorsAliases: 0,
         dialectOptions: {

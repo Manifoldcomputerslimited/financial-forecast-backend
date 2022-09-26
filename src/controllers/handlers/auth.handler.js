@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const { sendEmail } = require('../../helpers/email');
 const { generateTokens } = require("../auth/generateToken");
 const { verifyRefreshToken } = require("../auth/verifyRefreshToken");
+const config = require('../../../config');
 
 const db = require("../../models");
 const User = db.users;
@@ -68,7 +69,7 @@ const inviteUserHandler = async (req, reply) => {
         const details = {
             name: 'User',
             templateToUse: "invite",
-            url: `${process.env.BASE_URL}/register/${updatedCipherText}`,
+            url: `${config.BASE_URL}/register/${updatedCipherText}`,
         }
 
         // invite user by sending an email
@@ -200,7 +201,7 @@ const registerUserHandler = async (req, reply) => {
         const details = {
             name: `${firstName} ${lastName}`,
             templateToUse: "signup",
-            url: `${process.env.BASE_URL}`,
+            url: `${config.BASE_URL}`,
         }
 
         sendEmail(email, "Manifold Forecast Signup", "Registration completed", details);
@@ -242,7 +243,7 @@ const refreshTokenHandler = async (req, reply) => {
 
         const accessToken = jwt.sign(
             tokenDetails,
-            process.env.ACCESS_TOKEN_PRIVATE_KEY,
+            config.ACCESS_TOKEN_PRIVATE_KEY,
             { expiresIn: "1d" }
         );
 
@@ -450,7 +451,7 @@ const forgotPasswordHandler = async (req, reply) => {
         const details = {
             name: userExists.firstName,
             templateToUse: "passwordReset",
-            url: `${process.env.BASE_URL}/reset-password/${updatedCipherText}`,
+            url: `${config.BASE_URL}/reset-password/${updatedCipherText}`,
         }
 
         console.log(details)

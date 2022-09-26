@@ -1,5 +1,6 @@
 const { default: axios } = require('axios');
 const db = require("../../models");
+const config = require('../../../config');
 const { Op } = require('sequelize')
 let moment = require('moment');
 const User = db.users;
@@ -38,7 +39,7 @@ const getZohoExchangeRateHandler = async (zohoAccessToken, forecastNumber, forec
 
     // if rate doesn't exist then create the exchange rate from zoho and save to db
     if (!rate) {
-        url = `${process.env.ZOHO_BOOK_BASE_URL}/settings/currencies/${process.env.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${process.env.ORGANIZATION_ID}`;
+        url = `${config.ZOHO_BOOK_BASE_URL}/settings/currencies/${config.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${config.ORGANIZATION_ID}`;
 
         res = await axios.get(url, options);
 

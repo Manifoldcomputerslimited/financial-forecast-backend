@@ -2,6 +2,8 @@ const nodemailer = require('nodemailer')
 const Handlebars = require("handlebars");
 const fs = require('fs');
 const path = require('path');
+const config = require('../../config');
+
 
 const sendEmailTemplate = async (templateDetails) => {
     const { name, templateToUse, url } = templateDetails;
@@ -46,15 +48,15 @@ async function sendEmail(to, subject, body, detail) {
         console.log('sending email');
         const transporter = nodemailer.createTransport(
             {
-                host: process.env.SMTP_HOST,
-                port: process.env.SMTP_PORT,
+                host: config.SMTP_HOST,
+                port: config.SMTP_PORT,
                 secure: false, // upgrade later with STARTTLS
                 tls: {
                     ciphers: 'SSLv3'
                 },
                 auth: {
-                    user: process.env.SMTP_USER,
-                    pass: `${process.env.SMTP_PASS}`,
+                    user: config.SMTP_USER,
+                    pass: `${config.SMTP_PASS}`,
                 },
             });
 
@@ -62,7 +64,7 @@ async function sendEmail(to, subject, body, detail) {
         const template = await sendEmailTemplate(detail);
 
         const message = {
-            from: `${process.env.EMAIL_FROM} "MANIFOLD FORECAST"`,
+            from: `${config.EMAIL_FROM} "MANIFOLD FORECAST"`,
             to: to,
             subject: subject,
             text: body,

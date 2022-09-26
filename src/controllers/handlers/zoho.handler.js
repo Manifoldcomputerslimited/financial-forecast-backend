@@ -2,6 +2,7 @@ const { default: axios } = require('axios');
 const ExcelJS = require('exceljs');
 const { Op } = require('sequelize');
 const db = require("../../models");
+const config = require('../../../config');
 const Invoice = db.invoices;
 const InvoiceForecast = db.invoiceForecasts;
 const Bill = db.bills;
@@ -23,7 +24,7 @@ const getInvoice = async (options, forecastNumber, forecastPeriod, rate) => {
     startDate = date.clone().subtract(2, forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
     endDate = date.clone().add(forecastNumber - 1, forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD')
     // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
-    let url = `${process.env.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${process.env.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
+    let url = `${config.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${config.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
 
     resp = await axios.get(url, options);
 
@@ -123,7 +124,7 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate) => {
     endDate = date.clone().add(forecastNumber - 1, forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD')
 
     // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
-    let url = `${process.env.ZOHO_BOOK_BASE_URL}/bills?organization_id=${process.env.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
+    let url = `${config.ZOHO_BOOK_BASE_URL}/bills?organization_id=${config.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
 
     resp = await axios.get(url, options);
 
@@ -223,12 +224,12 @@ const getOpeningBalance = async (options, rate) => {
     endDate = date.clone().subtract(3, 'month').endOf('month').format('YYYY-MM-DD');
 
 
-    let invoiceUrl = `${process.env.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${process.env.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
+    let invoiceUrl = `${config.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${config.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
 
     openingInvoice = await axios.get(invoiceUrl, options);
 
     // get invoices for that month and sum it up
-    let billsUrl = `${process.env.ZOHO_BOOK_BASE_URL}/bills?organization_id=${process.env.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
+    let billsUrl = `${config.ZOHO_BOOK_BASE_URL}/bills?organization_id=${config.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
 
     openingBills = await axios.get(billsUrl, options);
 
@@ -1637,7 +1638,7 @@ const salesOrderHandler = async (req, reply) => {
 
         // console.log(options)
 
-        let url = `${process.env.ZOHO_BOOK_BASE_URL}/salesorders?organization_id=${process.env.ORGANIZATION_ID}`;
+        let url = `${config.ZOHO_BOOK_BASE_URL}/salesorders?organization_id=${config.ORGANIZATION_ID}`;
 
         res = await axios.get(url, options);
 

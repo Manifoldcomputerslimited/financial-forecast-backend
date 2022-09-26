@@ -1,9 +1,11 @@
 const jwt = require("jsonwebtoken");
 const db = require("../../models");
+const config = require('../../../config');
 const User = db.users;
 
+
 const verifyRefreshToken = (refreshToken, reply) => {
-    const privateKey = process.env.REFRESH_TOKEN_PRIVATE_KEY;
+    const privateKey = config.REFRESH_TOKEN_PRIVATE_KEY;
 
     return new Promise((resolve, reject) => {
         const user = User.findOne({

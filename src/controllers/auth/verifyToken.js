@@ -1,11 +1,12 @@
 const jwt = require("jsonwebtoken");
 const db = require("../../models");
+const config = require('../../../config');
 const User = db.users;
 
 const verifyToken = async (req, reply, done) => {
     const token = req?.headers?.authorization?.split(" ")[1];
     // console.log('verify token', token)
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_PRIVATE_KEY);
+    const decoded = jwt.verify(token, config.ACCESS_TOKEN_PRIVATE_KEY);
 
     if (!decoded) {
         throw new Error("Authorization failed");

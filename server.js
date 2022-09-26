@@ -3,6 +3,7 @@ const app = require("fastify")({
   logger: true,
   trustProxy: true,
 });
+const config = require('./config');
 
 const cors = require("@fastify/cors");
 const fastifyFormbody = require("@fastify/formbody");
@@ -29,8 +30,8 @@ app.register(cors, {
 const db = require("./src/models");
 db.sequelize.sync();
 
-app.register(require("./src/routes/auth.routes.js"), { prefix: "v1" });
-app.register(require("./src/routes/zoho.routes.js"), { prefix: "v1" });
+app.register(require("./src/routes/auth.routes.js"), { prefix: "api/v1" }); //TODO:: always update this
+app.register(require("./src/routes/zoho.routes.js"), { prefix: "api/v1" });
 
 // Declare a route
 app.register(
@@ -46,7 +47,8 @@ app.register(
 // Run the server!
 const start = async () => {
   try {
-    await app.listen(4000, '0.0.0.0');
+    const PORT = parseInt(config.PORT)
+    await app.listen(PORT, '0.0.0.0');
   } catch (err) {
     app.log.error(err);
     process.exit(1);

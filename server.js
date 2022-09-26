@@ -30,8 +30,8 @@ app.register(cors, {
 const db = require("./src/models");
 db.sequelize.sync();
 
-app.register(require("./src/routes/auth.routes.js"), { prefix: "api/v1" }); //TODO:: always update this
-app.register(require("./src/routes/zoho.routes.js"), { prefix: "api/v1" });
+app.register(require("./src/routes/auth.routes.js"), { prefix: "v1" });
+app.register(require("./src/routes/zoho.routes.js"), { prefix: "v1" });
 
 // Declare a route
 app.register(

@@ -349,6 +349,20 @@ const updateUserRoleHandler = async (req, reply) => {
             where: { email },
         });
 
+        if (user.id === req.user.id) {
+            return reply.code(400).send({
+                status: false,
+                message: "You are not allowed to perform this action",
+            });
+        }
+
+        if (user.super) {
+            return reply.code(400).send({
+                status: false,
+                message: "You are not allowed to perform this action",
+            });
+        }
+
         if (!user.status)
             return reply.code(400).send({
                 status: false,
@@ -533,6 +547,20 @@ const deleteUserHandler = async (req, reply) => {
                 message: "User Not Found",
             });
 
+        if (user.id === req.user.id) {
+            return reply.code(400).send({
+                status: false,
+                message: "You are not allowed to perform this action",
+            });
+        }
+
+        if (user.super) {
+            return reply.code(400).send({
+                status: false,
+                message: "You are not allowed to perform this action",
+            });
+        }
+        
         user.destroy();
 
         statusCode = 200;

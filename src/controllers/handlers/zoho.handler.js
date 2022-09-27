@@ -1613,7 +1613,7 @@ const downloadReportHandler = async (req, reply) => {
         statusCode = e.response.status;
         result = {
             status: false,
-            message: e.response.data.message,
+            message: 'An error occured: Update the rate and re-download',
         };
     }
 

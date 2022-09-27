@@ -24,6 +24,11 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
         },
+        // super admin
+        super: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+        },
         // Token generated when an invite is sent to a user
         inviteToken: {
             type: DataTypes.TEXT('long'),

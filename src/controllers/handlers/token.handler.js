@@ -82,7 +82,7 @@ const generateZohoTokenHandler = async (req, reply) => {
                 zohoTokenDate: new Date().addHours(1)
             });
             console.log('updating user')
-           
+
         } else {
             console.log('refreshing user')
             url = `${config.ZOHO_BASE_URL}?refresh_token=${zohoToken.zohoRefreshToken}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
@@ -97,7 +97,7 @@ const generateZohoTokenHandler = async (req, reply) => {
                 });
             }
 
-            zohoToken.update({
+            zohoToken = await zohoToken.update({
                 // zohoAccessToken: resp.data.access_token,
                 zohoTokenExpiry: dayjs().add(3600, 'second').utc(1).format(),
                 zohoTokenDate: new Date().addHours(1)
@@ -107,12 +107,15 @@ const generateZohoTokenHandler = async (req, reply) => {
             isZohoAuthenticated: true
         })
 
+        console.log('what', zohoToken);
+
         statusCode = 200;
         result = {
             status: true,
             message: "Zoho Token generated successfully",
             data: {
                 zohoAccessToken: resp.data.access_token,
+                zohoTokenExpiry: zohoToken.zohoTokenExpiry
             }
         }
 
@@ -169,7 +172,7 @@ const refreshZohoTokenHandler = async (req, reply) => {
             });
         }
 
-        zohoToken.update({
+        zohoToken = await zohoToken.update({
             // zohoAccessToken: resp.data.access_token,
             zohoTokenExpiry: dayjs().add(3600, 'second').utc(1).format(),
             zohoTokenDate: new Date().addHours(1)
@@ -181,6 +184,7 @@ const refreshZohoTokenHandler = async (req, reply) => {
             message: "Zoho Token generated successfully",
             data: {
                 zohoAccessToken: resp.data.access_token,
+                zohoTokenExpiry: zohoToken.zohoTokenExpiry
             }
         }
 

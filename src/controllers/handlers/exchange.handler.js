@@ -12,7 +12,7 @@ const Bill = db.bills;
 const InitialBalance = db.initialBalances;
 
 // Get exchange rate and save into database
-const getZohoExchangeRateHandler = async (zohoAccessToken, forecastNumber, forecastPeriod) => {
+const getZohoExchangeRateHandler = async (zohoAccessToken, forecastNumber, forecastPeriod, userId) => {
 
     const TODAY_START = new Date().setHours(0, 0, 0, 0);
     const TODAY_END = new Date().setHours(23, 59, 59, 999);
@@ -29,6 +29,7 @@ const getZohoExchangeRateHandler = async (zohoAccessToken, forecastNumber, forec
 
     rate = await Rate.findOne({
         where: {
+            userId,
             forecastType: `${forecastNumber} ${forecastPeriod}`,
             updatedAt: {
                 [Op.gt]: TODAY_START,
@@ -51,6 +52,7 @@ const getZohoExchangeRateHandler = async (zohoAccessToken, forecastNumber, forec
 
         // save to db
         rate = await Rate.create({
+            userId,
             old: res.data.exchange_rates[0].rate,
             latest: res.data.exchange_rates[0].rate,
             forecastType: `${forecastNumber} ${forecastPeriod}`
@@ -66,9 +68,11 @@ const getExchangeRateHandler = async (req, reply) => {
         const { number, period } = req.params
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
         const TODAY_END = new Date().setHours(23, 59, 59, 999);
+        const userId = req.user.id;
 
         let rate = await Rate.findOne({
             where: {
+                userId,
                 forecastType: number + ' ' + period,
                 updatedAt: {
                     [Op.gt]: TODAY_START,
@@ -109,14 +113,15 @@ const updateExchangeRateHandler = async (req, reply) => {
     try {
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
         const TODAY_END = new Date().setHours(23, 59, 59, 999);
-        let { id } = req.params;
-        let { latest, forecastNumber, forecastPeriod } = req.body;
+        const { id } = req.params;
+        const { latest, forecastNumber, forecastPeriod } = req.body;
+        const userId = req.user.id;
 
 
         // check if exchange rate exist in db for the day
         let rate = await Rate.findOne({
             where: {
-                id
+                id, userId
             }
         })
 
@@ -130,11 +135,14 @@ const updateExchangeRateHandler = async (req, reply) => {
 
 
         rate = await rate.update({
+            userId: userId,
             latest
         });
 
         await InitialBalance.destroy({
             where: {
+                userId: userId,
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
                 updatedAt: {
                     [Op.gt]: TODAY_START,
                     [Op.lt]: TODAY_END
@@ -144,6 +152,7 @@ const updateExchangeRateHandler = async (req, reply) => {
 
         await BillForecast.destroy({
             where: {
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 updatedAt: {
                     [Op.gt]: TODAY_START,
@@ -154,6 +163,7 @@ const updateExchangeRateHandler = async (req, reply) => {
 
         await InvoiceForecast.destroy({
             where: {
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 updatedAt: {
                     [Op.gt]: TODAY_START,
@@ -164,6 +174,7 @@ const updateExchangeRateHandler = async (req, reply) => {
 
         await Bill.destroy({
             where: {
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 updatedAt: {
                     [Op.gt]: TODAY_START,
@@ -174,6 +185,7 @@ const updateExchangeRateHandler = async (req, reply) => {
 
         await Invoice.destroy({
             where: {
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 updatedAt: {
                     [Op.gt]: TODAY_START,

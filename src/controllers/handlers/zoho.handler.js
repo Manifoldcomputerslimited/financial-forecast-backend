@@ -14,7 +14,7 @@ let moment = require('moment');
 const { getZohoExchangeRateHandler } = require('./exchange.handler');
 moment().format();
 
-const getInvoice = async (options, forecastNumber, forecastPeriod, rate) => {
+const getInvoice = async (options, forecastNumber, forecastPeriod, rate, userId) => {
     let date = moment();
     let startDate
     let endDate
@@ -62,6 +62,7 @@ const getInvoice = async (options, forecastNumber, forecastPeriod, rate) => {
 
         await InvoiceForecast.create(
             {
+                userId,
                 nairaClosingBalance: nairaClosingBalance,
                 dollarClosingBalance: 0.0,
                 month: startDate,
@@ -72,6 +73,7 @@ const getInvoice = async (options, forecastNumber, forecastPeriod, rate) => {
 
         await InvoiceForecast.create(
             {
+                userId,
                 nairaClosingBalance: 0.0,
                 dollarClosingBalance: dollarClosingBalance,
                 month: startDate,
@@ -91,6 +93,7 @@ const getInvoice = async (options, forecastNumber, forecastPeriod, rate) => {
             }
 
             const payload = {
+                userId,
                 invoiceId: e.invoice_id,
                 customerName: e.customer_name,
                 status: e.status,
@@ -115,7 +118,7 @@ const getInvoice = async (options, forecastNumber, forecastPeriod, rate) => {
 
 }
 
-const getBill = async (options, forecastNumber, forecastPeriod, rate) => {
+const getBill = async (options, forecastNumber, forecastPeriod, rate, userId) => {
     let date = moment();
     let startDate;
     let endDate;
@@ -161,6 +164,7 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate) => {
 
         await BillForecast.create(
             {
+                userId,
                 nairaClosingBalance: nairaClosingBalance,
                 dollarClosingBalance: 0.0,
                 month: startDate,
@@ -171,6 +175,7 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate) => {
 
         await BillForecast.create(
             {
+                userId,
                 nairaClosingBalance: 0.0,
                 dollarClosingBalance: dollarClosingBalance,
                 month: startDate,
@@ -190,6 +195,7 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate) => {
             }
 
             const payload = {
+                userId,
                 billId: e.bill_id,
                 vendorId: e.vendor_id,
                 vendorName: e.vendor_name,
@@ -216,7 +222,7 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate) => {
 
 // update when you update exchange rate
 // update when you refresh
-const getOpeningBalance = async (options, rate) => {
+const getOpeningBalance = async (options, forecastNumber, forecastPeriod, rate, userId) => {
     let date = moment();
     // get start date of last 3 months
     startDate = date.clone().subtract(3, 'month').startOf('month').format('YYYY-MM-DD');
@@ -276,8 +282,10 @@ const getOpeningBalance = async (options, rate) => {
     let dollarOpeningBalance = dollarOpeningInvoicesBalance - dollarOpeningBillsBalance;
 
     let startingBalance = {
+        userId,
         nairaOpeningBalance: nairaOpeningBalance,
         dollarOpeningBalance: dollarOpeningBalance,
+        forecastType: `${forecastNumber} ${forecastPeriod}`,
     }
     // create this daily
     await InitialBalance.create(startingBalance);
@@ -293,591 +301,7 @@ const openingBalanceHandler = async (req, reply) => {
         const zohoAccessToken = req.body.zohoAccessToken;
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
         const TODAY_END = new Date().setHours(23, 59, 59, 999);
-
-        // let invoices = {
-        //     count: 12,
-        //     rows: [
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "JEVI AUSTIN",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-07-25",
-        //             "dueDate": "2022-07-28",
-        //             "due_days": "",
-        //             "currencyCode": "NGN",
-        //             "balance": 25000.00,
-        //             "naira": 25000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "JEVI AUSTIN",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-07-25",
-        //             "dueDate": "2022-07-28",
-        //             "due_days": "",
-        //             "currencyCode": "USD",
-        //             "balance": 4000.00,
-        //             "naira": 0.00,
-        //             "dollar": 4000.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "LOTUS BANK LIMITED",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-07-25",
-        //             "dueDate": "2022-07-28",
-        //             "due_days": "",
-        //             "currencyCode": "NGN",
-        //             "balance": 4000.00,
-        //             "naira": 4000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "ACCESS BANK ",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-08-25",
-        //             "dueDate": "2022-08-28",
-        //             "due_days": "",
-        //             "currencyCode": "USD",
-        //             "balance": 4000.00,
-        //             "naira": 0.00,
-        //             "dollar": 4000.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "Chevron",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-08-25",
-        //             "dueDate": "2022-08-28",
-        //             "due_days": "",
-        //             "currencyCode": "NGN",
-        //             "balance": 5000.00,
-        //             "naira": 5000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "SHELL PETROLEUM",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-08-25",
-        //             "dueDate": "2022-08-28",
-        //             "due_days": "",
-        //             "currencyCode": "NGN",
-        //             "balance": 40000.00,
-        //             "naira": 40000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "SHELL PETROLEUM",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-08-25",
-        //             "dueDate": "2022-08-28",
-        //             "due_days": "",
-        //             "currencyCode": "USD",
-        //             "balance": 2000.00,
-        //             "naira": 2000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "JEVI AUSTIN",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-09-25",
-        //             "dueDate": "2022-09-28",
-        //             "due_days": "",
-        //             "currencyCode": "NGN",
-        //             "balance": 30000.00,
-        //             "naira": 30000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "JEVI AUSTIN",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-09-25",
-        //             "dueDate": "2022-09-28",
-        //             "due_days": "",
-        //             "currencyCode": "USD",
-        //             "balance": 200.00,
-        //             "naira": 0.00,
-        //             "dollar": 200.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "LOTUS BANK LIMITED",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-09-25",
-        //             "dueDate": "2022-09-28",
-        //             "due_days": "",
-        //             "currencyCode": "USD",
-        //             "balance": 5000.00,
-        //             "naira": 0.00,
-        //             "dollar": 5000.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "MOBIL PRODUCING ",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-10-25",
-        //             "dueDate": "2022-10-28",
-        //             "due_days": "",
-        //             "currencyCode": "NGN",
-        //             "balance": 40000.00,
-        //             "naira": 40000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //         {
-        //             "invoiceId": "2597328000006277339",
-        //             "customerName": "MOBIL PRODUCING",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-10-25",
-        //             "dueDate": "2022-10-28",
-        //             "due_days": "",
-        //             "currencyCode": "USD",
-        //             "balance": 2000.00,
-        //             "naira": 0.00,
-        //             "dollar": 2000.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-18 22:15:07",
-        //             "updatedAt": "2022-09-18 22:15:07"
-        //         },
-        //     ]
-        // };
-
-
-        // let bills = {
-        //     count: 8,
-        //     rows: [
-        //         {
-        //             "billId": "2597328000006277339",
-        //             "vendorId": "2597328000006277339",
-        //             "vendorName": "BTI",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-07-25",
-        //             "dueDate": "2022-07-28",
-        //             "currencyCode": "USD",
-        //             "balance": 3000.00,
-        //             "naira": 0.00,
-        //             "dollar": 3000.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "billId": "2597328000006277339",
-        //             "vendorId": "2597328000006277339",
-        //             "vendorName": "COSCHARIS",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-07-25",
-        //             "dueDate": "2022-07-28",
-        //             "currencyCode": "NGN",
-        //             "balance": 5000.00,
-        //             "naira": 5000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "billId": "2597328000006277339",
-        //             "vendorId": "2597328000006277339",
-        //             "vendorName": "EXTRA VALUE ",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-08-25",
-        //             "dueDate": "2022-08-28",
-        //             "currencyCode": "USD",
-        //             "balance": 1000.00,
-        //             "naira": 0.00,
-        //             "dollar": 1000.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "billId": "2597328000006277339",
-        //             "vendorId": "2597328000006277339",
-        //             "vendorName": "KENNY JEE TECHNICAL",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-07-25",
-        //             "dueDate": "2022-07-28",
-        //             "currencyCode": "NGN",
-        //             "balance": 3000.00,
-        //             "naira": 3000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "billId": "2597328000006277339",
-        //             "vendorId": "2597328000006277339",
-        //             "vendorName": "KENNY JEE TECHNICAL",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-07-25",
-        //             "dueDate": "2022-07-28",
-        //             "currencyCode": "USD",
-        //             "balance": 200.00,
-        //             "naira": 0.00,
-        //             "dollar": 200.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "billId": "2597328000006277339",
-        //             "vendorId": "2597328000006277339",
-        //             "vendorName": "COSCHARIS",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-09-25",
-        //             "dueDate": "2022-09-28",
-        //             "currencyCode": "NGN",
-        //             "balance": 73000.00,
-        //             "naira": 73000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "billId": "2597328000006277339",
-        //             "vendorId": "2597328000006277339",
-        //             "vendorName": "COSCHARIS",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-09-25",
-        //             "dueDate": "2022-09-28",
-        //             "currencyCode": "USD",
-        //             "balance": 8000.00,
-        //             "naira": 0.00,
-        //             "dollar": 8000.00,
-        //             "exchange_rate": 1.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "billId": "2597328000006277339",
-        //             "vendorId": "2597328000006277339",
-        //             "vendorName": "BTI",
-        //             "status": "approved",
-        //             "invoiceNumber": "INV-000688",
-        //             "referenceNumber": "PCARD 2531 SNEPCO",
-        //             "date": "2022-10-25",
-        //             "dueDate": "2022-10-28",
-        //             "currencyCode": "NGN",
-        //             "balance": 9000.00,
-        //             "naira": 9000.00,
-        //             "dollar": 0.00,
-        //             "exchange_rate": 420.00,
-        //             "forecastType": "3 Month",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //     ]
-        // }
-
-        // let invoiceForecasts = {
-        //     count: 10,
-        //     rows: [
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 29000,
-        //             "month": "2022-07-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 4000,
-        //             "nairaClosingBalance": 0,
-        //             "month": "2022-07-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 45000.00,
-        //             "month": "2022-08-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 6000,
-        //             "nairaClosingBalance": 0,
-        //             "month": "2022-08-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 30000,
-        //             "month": "2022-09-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 5200,
-        //             "nairaClosingBalance": 0,
-        //             "month": "2022-09-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 40000,
-        //             "month": "2022-10-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 2000.00,
-        //             "nairaClosingBalance": 0.00,
-        //             "month": "2022-10-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 0.00,
-        //             "month": "2022-11-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 0,
-        //             "month": "2022-11-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //     ]
-        // }
-
-        // let billForecasts = {
-        //     count: 10,
-        //     rows: [
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 8000,
-        //             "month": "2022-07-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 3200,
-        //             "nairaClosingBalance": 0,
-        //             "month": "2022-07-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 0.00,
-        //             "month": "2022-08-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 1000,
-        //             "nairaClosingBalance": 0,
-        //             "month": "2022-08-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 73000,
-        //             "month": "2022-09-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 8000,
-        //             "nairaClosingBalance": 0,
-        //             "month": "2022-09-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 9000,
-        //             "month": "2022-10-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 0.00,
-        //             "month": "2022-10-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 0.00,
-        //             "month": "2022-11-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "NGN",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //         {
-        //             "id": "2597328000006277339",
-        //             "dollarClosingBalance": 0.00,
-        //             "nairaClosingBalance": 0,
-        //             "month": "2022-11-28",
-        //             "forecastType": "3 Month",
-        //             "currency": "USD",
-        //             "createdAt": "2022-09-07 22:15:07",
-        //             "updatedAt": "2022-09-07 22:15:07"
-        //         },
-        //     ]
-        // }
+        const userId = req.user.id;
 
         const options = {
             headers: {
@@ -886,7 +310,7 @@ const openingBalanceHandler = async (req, reply) => {
             }
         }
 
-        let rate = await getZohoExchangeRateHandler(zohoAccessToken, forecastNumber, forecastPeriod);
+        let rate = await getZohoExchangeRateHandler(zohoAccessToken, forecastNumber, forecastPeriod, userId);
 
         if (!rate) {
             return reply.code(400).send({
@@ -897,6 +321,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let invoices = await Invoice.findAndCountAll({
             where: {
+                userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -908,6 +333,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let bills = await Bill.findAndCountAll({
             where: {
+                userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -918,6 +344,8 @@ const openingBalanceHandler = async (req, reply) => {
 
         let initialOpeningBalance = await InitialBalance.findOne({
             where: {
+                userId,
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
                     [Op.lt]: TODAY_END
@@ -931,6 +359,7 @@ const openingBalanceHandler = async (req, reply) => {
         // get invoice forecast where forecastType 
         let invoiceForecasts = await InvoiceForecast.findAndCountAll({
             where: {
+                userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -941,6 +370,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let billForecasts = await BillForecast.findAndCountAll({
             where: {
+                userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -950,17 +380,18 @@ const openingBalanceHandler = async (req, reply) => {
         });
 
         if (!initialOpeningBalance) {
-            initialOpeningBalance = await getOpeningBalance(options, rate);
+            initialOpeningBalance = await getOpeningBalance(options, forecastNumber, forecastPeriod, rate, userId);
         }
 
         if (!billForecasts.count && !invoiceForecasts.count && !bills.count && !invoices.count) {
 
-            await getInvoice(options, forecastNumber, forecastPeriod, rate);
+            await getInvoice(options, forecastNumber, forecastPeriod, rate, userId);
 
-            await getBill(options, forecastNumber, forecastPeriod, rate);
+            await getBill(options, forecastNumber, forecastPeriod, rate, userId);
 
             invoices = await Invoice.findAndCountAll({
                 where: {
+                    userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -972,6 +403,7 @@ const openingBalanceHandler = async (req, reply) => {
 
             bills = await Bill.findAndCountAll({
                 where: {
+                    userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -986,6 +418,7 @@ const openingBalanceHandler = async (req, reply) => {
             // get invoice forecast where forecastType 
             invoiceForecasts = await InvoiceForecast.findAndCountAll({
                 where: {
+                    userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -996,6 +429,7 @@ const openingBalanceHandler = async (req, reply) => {
 
             billForecasts = await BillForecast.findAndCountAll({
                 where: {
+                    userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -1182,7 +616,7 @@ const downloadReportHandler = async (req, reply) => {
         const zohoAccessToken = req.body.zohoAccessToken;
         const TODAY_START = new Date().setHours(0, 0, 0, 0);
         const TODAY_END = new Date().setHours(23, 59, 59, 999);
-
+        const userId = req.user.id;
 
         const options = {
             headers: {
@@ -1191,7 +625,7 @@ const downloadReportHandler = async (req, reply) => {
             }
         }
 
-        let rate = await getZohoExchangeRateHandler(zohoAccessToken, forecastNumber, forecastPeriod);
+        let rate = await getZohoExchangeRateHandler(zohoAccessToken, forecastNumber, forecastPeriod, userId);
 
         if (!rate) {
             return reply.code(400).send({
@@ -1202,6 +636,7 @@ const downloadReportHandler = async (req, reply) => {
 
         let invoices = await Invoice.findAndCountAll({
             where: {
+                userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -1213,6 +648,7 @@ const downloadReportHandler = async (req, reply) => {
 
         let bills = await Bill.findAndCountAll({
             where: {
+                userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -1223,6 +659,8 @@ const downloadReportHandler = async (req, reply) => {
 
         let initialOpeningBalance = await InitialBalance.findOne({
             where: {
+                userId,
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
                     [Op.lt]: TODAY_END
@@ -1237,6 +675,7 @@ const downloadReportHandler = async (req, reply) => {
         // get invoice forecast where forecastType 
         let invoiceForecasts = await InvoiceForecast.findAndCountAll({
             where: {
+                userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -1247,6 +686,7 @@ const downloadReportHandler = async (req, reply) => {
 
         let billForecasts = await BillForecast.findAndCountAll({
             where: {
+                userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -1256,16 +696,17 @@ const downloadReportHandler = async (req, reply) => {
         });
 
         if (!initialOpeningBalance) {
-            initialOpeningBalance = await getOpeningBalance(options, rate);
+            initialOpeningBalance = await getOpeningBalance(options, forecastNumber, forecastPeriod, rate, userId,);
         }
 
         if (!billForecasts.count && !invoiceForecasts.count && !bills.count && !invoices.count) {
-            await getInvoice(options, forecastNumber, forecastPeriod, rate);
+            await getInvoice(options, forecastNumber, forecastPeriod, rate, userId,);
 
-            await getBill(options, forecastNumber, forecastPeriod, rate);
+            await getBill(options, forecastNumber, forecastPeriod, rate, userId,);
 
             invoices = await Invoice.findAndCountAll({
                 where: {
+                    userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -1277,6 +718,7 @@ const downloadReportHandler = async (req, reply) => {
 
             bills = await Bill.findAndCountAll({
                 where: {
+                    userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -1301,6 +743,7 @@ const downloadReportHandler = async (req, reply) => {
 
             billForecasts = await BillForecast.findAndCountAll({
                 where: {
+                    userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,

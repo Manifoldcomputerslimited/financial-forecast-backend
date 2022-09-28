@@ -42,7 +42,11 @@ module.exports = (sequelize, DataTypes) => {
         },
         forecastType: {
             type: DataTypes.STRING,
-        }
+        },
+        userId: {
+            type: DataTypes.STRING,
+            allowNull: false,
+        },
     });
 
     return Invoice;

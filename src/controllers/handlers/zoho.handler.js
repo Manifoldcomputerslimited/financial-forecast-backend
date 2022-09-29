@@ -321,7 +321,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let invoices = await Invoice.findAndCountAll({
             where: {
-                userId,
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -333,7 +333,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let bills = await Bill.findAndCountAll({
             where: {
-                userId,
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -344,7 +344,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let initialOpeningBalance = await InitialBalance.findOne({
             where: {
-                userId,
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -359,7 +359,7 @@ const openingBalanceHandler = async (req, reply) => {
         // get invoice forecast where forecastType 
         let invoiceForecasts = await InvoiceForecast.findAndCountAll({
             where: {
-                userId,
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -370,7 +370,7 @@ const openingBalanceHandler = async (req, reply) => {
 
         let billForecasts = await BillForecast.findAndCountAll({
             where: {
-                userId,
+                userId: userId,
                 forecastType: `${forecastNumber} ${forecastPeriod}`,
                 createdAt: {
                     [Op.gt]: TODAY_START,
@@ -391,7 +391,7 @@ const openingBalanceHandler = async (req, reply) => {
 
             invoices = await Invoice.findAndCountAll({
                 where: {
-                    userId,
+                    userId: userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -403,7 +403,7 @@ const openingBalanceHandler = async (req, reply) => {
 
             bills = await Bill.findAndCountAll({
                 where: {
-                    userId,
+                    userId: userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -418,7 +418,7 @@ const openingBalanceHandler = async (req, reply) => {
             // get invoice forecast where forecastType 
             invoiceForecasts = await InvoiceForecast.findAndCountAll({
                 where: {
-                    userId,
+                    userId: userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,
@@ -429,7 +429,7 @@ const openingBalanceHandler = async (req, reply) => {
 
             billForecasts = await BillForecast.findAndCountAll({
                 where: {
-                    userId,
+                    userId: userId,
                     forecastType: `${forecastNumber} ${forecastPeriod}`,
                     createdAt: {
                         [Op.gt]: TODAY_START,

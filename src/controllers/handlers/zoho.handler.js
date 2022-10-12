@@ -1,11 +1,8 @@
 const { default: axios } = require('axios');
 const ExcelJS = require('exceljs');
-const db = require("../../models");
 const config = require('../../../config');
-
-
-
 let moment = require('moment');
+
 const { getZohoExchangeRateHandler } = require('./exchange.handler');
 const {
     createInvoiceForecast,
@@ -17,7 +14,9 @@ const {
     fetchAllInvoiceForecast,
     fetchAllBillForecast,
     fetchAllInvoice,
-    fetchAllBill
+    fetchAllBill,
+    createOpeningBalance,
+    getPreviousDayOpeningBalance
 } = require('../../helpers/dbQuery');
 moment().format();
 
@@ -28,24 +27,20 @@ const getInvoice = async (options, forecastNumber, forecastPeriod, rate, userId)
 
     // monthly / yearly forecast
     // TODO::: rework this... only fetch start date and end date. should not be a loop.
-    startDate = date.clone().subtract(2, forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
+    //TODO:: rework to fetch data by date...
+    startDate = date.clone().add(0, forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
     endDate = date.clone().add(forecastNumber - 1, forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD')
     // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
     let url = `${config.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${config.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`
 
     resp = await axios.get(url, options);
 
-    for (i = 0; i < forecastNumber + 2; i++) {
-        if (i <= 1) {
-            startDate = date.clone().subtract(Math.abs(i - 2), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
-            endDate = date.clone().subtract(Math.abs(i - 2), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
-        }
+    for (i = 0; i < forecastNumber; i++) {
 
-        if (i >= 2) {
-            startDate = date.clone().add(Math.abs(i - 2), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
-            endDate = date.clone().add(Math.abs(i - 2), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
-        }
+        startDate = date.clone().add(Math.abs(i), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
+        endDate = date.clone().add(Math.abs(i), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
 
+        //TODO:: add filters here
         const filteredItems = resp.data.invoices.filter((item, index) => item.due_date >= startDate && item.due_date <= endDate);
 
         dollarClosingBalance = filteredItems.reduce(function (acc, obj) {
@@ -110,7 +105,7 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate, userId) =>
     let startDate;
     let endDate;
 
-    startDate = date.clone().subtract(2, forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
+    startDate = date.clone().add(0, forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
     endDate = date.clone().add(forecastNumber - 1, forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD')
 
     // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
@@ -118,16 +113,10 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate, userId) =>
 
     resp = await axios.get(url, options);
 
-    for (i = 0; i < forecastNumber + 2; i++) {
-        if (i <= 1) {
-            startDate = date.clone().subtract(Math.abs(i - 2), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
-            endDate = date.clone().subtract(Math.abs(i - 2), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
-        }
+    for (i = 0; i < forecastNumber; i++) {
 
-        if (i >= 2) {
-            startDate = date.clone().add(Math.abs(i - 2), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
-            endDate = date.clone().add(Math.abs(i - 2), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
-        }
+        startDate = date.clone().add(Math.abs(i), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
+        endDate = date.clone().add(Math.abs(i), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
 
         const filteredItems = resp.data.bills.filter((item, index) => item.due_date >= startDate && item.due_date <= endDate);
 
@@ -185,6 +174,175 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate, userId) =>
         }
 
     }
+}
+
+const getSalesOrder = async (options, forecastNumber, forecastPeriod, rate, userId) => {
+    let date = moment();
+    let startDate;
+    let endDate;
+
+    startDate = date.clone().add(0, forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
+    endDate = date.clone().add(forecastNumber - 1, forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD')
+
+    // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
+    let url = `${config.ZOHO_BOOK_BASE_URL}/salesorders?organization_id=${config.ORGANIZATION_ID}&shipment_date_start=${startDate}&shipment_date_end=${endDate}&sort_column=shipment_date`
+
+    resp = await axios.get(url, options);
+
+    for (i = 0; i < forecastNumber; i++) {
+        startDate = date.clone().add(Math.abs(i), forecastPeriod).startOf(forecastPeriod).format('YYYY-MM-DD');
+        endDate = date.clone().add(Math.abs(i), forecastPeriod).endOf(forecastPeriod).format('YYYY-MM-DD');
+
+
+        const filteredItems = resp.data.sales.filter((item, index) => item.shipment_date >= startDate && item.shipment_date <= endDate);
+
+        dollarClosingBalance = filteredItems.reduce(function (acc, obj) {
+
+            total = obj.currency_code === 'USD' ? obj.total : 0.0
+
+            return acc + total
+        }, 0);
+
+        nairaClosingBalance = filteredItems.reduce(function (acc, obj) {
+
+            total = obj.currency_code === 'NGN' ? obj.total : 0.0
+
+            if (rate.old !== rate.latest) {
+                balance = (balance / rate.old) * rate.latest;
+            }
+
+            return acc + total
+        }, 0);
+
+        await createSaleForecast(userId, nairaClosingBalance, 0.0, startDate, forecastNumber, forecastPeriod, "NGN")
+
+        await createSaleForecast(userId, 0.0, dollarClosingBalance, startDate, forecastNumber, forecastPeriod, "USD")
+
+    }
+
+    for (const [i, e] of resp.data.sales.entries()) {
+
+        if (parseFloat(e.total) > 0) {
+
+            if ((rate.old !== rate.latest) && e.currency_code === 'NGN') {
+                e.total = (e.total / rate.old) * rate.latest;
+            }
+
+            const payload = {
+                userId,
+                saleOrderId: e.salesorder_id,
+                customerName: e.customer_id,
+                status: e.status,
+                salesOrderNumber: e.salesorder_number,
+                refrenceNumber: e.reference_number,
+                date: e.date,
+                shipmentDate: e.shipment_date,
+                currencyCode: e.currency_code,
+                total: e.total,
+                naira: e.currency_code === 'NGN' ? e.total : 0.0,
+                dollar: e.currency_code === 'USD' ? e.total : 0.0,
+                exchangeRate: e.exchange_rate,
+                forecastType: `${forecastNumber} ${forecastPeriod}`
+            }
+
+            await createBill({ payload })
+        }
+
+    }
+}
+
+// USE CRON JOB.
+const createOpeningBalanceHandler = async (req, reply) => {
+    try {
+        const TODAY_START = moment().startOf('day').format();
+        const TODAY_END = moment().endOf('day').format();
+
+        let prevOpeningBalData = {
+            yesterday_start: TODAY_START,
+            yesterday_end: TODAY_END
+        }
+        // check if opening balance has been updated today. 
+        const openingBalance = await getPreviousDayOpeningBalance({ prevOpeningBalData })
+
+        if (openingBalance) {
+            return reply.code(400).send({
+                status: false,
+                message: 'Opening Balance Already Exists',
+            });
+        }
+
+        zoho = await axios.post('https://accounts.zoho.com/oauth/v2/token?refresh_token=1000.2850a17db7c34f1c1b49bc4ab95c5d8b.96921da50a793a7b48c2e97dc9d509a7&client_id=1000.TJGNSOYFT192B23XTR4P5889QPF6RC&client_secret=cacd523d84375e5c039b3c9474e4c0ffd6fbd311e4&redirect_uri=https://manifoldcomputers.com&grant_type=refresh_token');
+
+        const options = {
+            headers: {
+                'Content-Type': ['application/json'],
+                'Authorization': 'Bearer ' + zoho.data.access_token
+            }
+        }
+
+        let rateUrl = `${config.ZOHO_BOOK_BASE_URL}/settings/currencies/${config.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${config.ORGANIZATION_ID}`;
+
+        res = await axios.get(rateUrl, options);
+
+        if (res.data.error)
+            return reply.code(400).send({
+                status: false,
+                message: 'Could not fetch exchange rate',
+            });
+
+
+        let bankAccountUrl = `${config.ZOHO_BOOK_BASE_URL}/bankaccounts?organization_id=${config.ORGANIZATION_ID}`;
+
+        resp = await axios.get(bankAccountUrl, options);
+
+        if (resp.data.error)
+            return reply.code(400).send({
+                status: false,
+                message: 'Could not fetch bank accounts',
+            });
+
+        let ngnBalance = 0;
+        let usdBalance = 0;
+
+        for (const [rowNum, inputData] of resp.data.bankaccounts.entries()) {
+            if (inputData.currency_code === 'USD') {
+                usdBalance += inputData.balance;
+            }
+
+            if (inputData.currency_code === 'NGN') {
+                ngnBalance += inputData.balance;
+            }
+        }
+
+        let usdToNaira = usdBalance * res.data.exchange_rates[0].rate;
+        let totalOpeningBalance = ngnBalance + usdToNaira
+
+        payload = {
+            naira: ngnBalance,
+            dollar: usdBalance,
+            rate: res.data.exchange_rates[0].rate,
+            amount: totalOpeningBalance
+        }
+
+        await createOpeningBalance({ payload })
+
+        statusCode = 200;
+
+        result = {
+            status: true,
+            message: 'Successfully',
+            data: '',
+        }
+
+    } catch (e) {
+        statusCode = e.response.status;
+        result = {
+            status: false,
+            message: e.response.data.message,
+        };
+    }
+
+    return reply.status(statusCode).send(result);
 }
 
 // update when you update exchange rate
@@ -262,6 +420,7 @@ const getOpeningBalance = async (options, forecastNumber, forecastPeriod, rate, 
 }
 
 const generateReportHandler = async (req, reply) => {
+
     let statusCode = 400;
     let result = {
         status: false,
@@ -269,11 +428,17 @@ const generateReportHandler = async (req, reply) => {
     };
 
     try {
+        let payload;
         const { forecastNumber, forecastPeriod, download } = req.body;
         const date = moment();
         const zohoAccessToken = req.body.zohoAccessToken;
-        const TODAY_START = new Date().setHours(0, 0, 0, 0);
-        const TODAY_END = new Date().setHours(23, 59, 59, 999);
+        const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format()
+        const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format()
+        const TODAY_START = moment().startOf('day').format();
+        const TODAY_END = moment().endOf('day').format();
+        let previousDayOpeningBalance;
+
+
         const userId = req.user.id;
 
         const options = {
@@ -292,7 +457,7 @@ const generateReportHandler = async (req, reply) => {
             });
         }
 
-        let payload = {
+        payload = {
             userId: userId,
             forecastNumber: forecastNumber,
             forecastPeriod: forecastPeriod,
@@ -304,6 +469,7 @@ const generateReportHandler = async (req, reply) => {
 
         let bills = await fetchAllBill({ payload });
 
+        // Get initial opening balance for a particular user
         let initialOpeningBalance = await getInitialBalance({ payload });
 
         // get invoice forecast where forecastType 
@@ -311,11 +477,54 @@ const generateReportHandler = async (req, reply) => {
 
         let billForecasts = await fetchAllBillForecast({ payload });
 
+        // if user has not generated opening balance for the day then
         if (!initialOpeningBalance) {
-            initialOpeningBalance = await getOpeningBalance(options, forecastNumber, forecastPeriod, rate, userId);
+
+            let prevOpeningBalData = {
+                yesterday_start: YESTERDAY_START,
+                yesterday_end: YESTERDAY_END
+            }
+
+            // fetch previous day opening balance.
+            // previous day opening balance should have been populated from the CRON JOB.
+            previousDayOpeningBalance = await getPreviousDayOpeningBalance({ prevOpeningBalData });
+
+            // if no previous day opneing balance throw and error
+            if (!previousDayOpeningBalance) {
+                return reply.code(400).send({
+                    status: false,
+                    message: 'Could not fetch exchange rate for previous day',
+                });
+            }
+
+            dollarOpening =  previousDayOpeningBalance.amount / previousDayOpeningBalance.rate;
+
+            let startingBalance = {
+                userId,
+                nairaOpeningBalance: dollarOpening * rate.latest,
+                dollarOpeningBalance: dollarOpening,
+                forecastType: `${forecastNumber} ${forecastPeriod}`,
+            }
+
+            await createInitialBalance({ startingBalance });
+
+            let payload = {
+                userId: userId,
+                forecastNumber: forecastNumber,
+                forecastPeriod: forecastPeriod,
+                today_start: TODAY_START,
+                today_end: TODAY_END
+            }
+
+            initialOpeningBalance = await getInitialBalance({ payload });
+
         }
 
+
         if (!billForecasts.count && !invoiceForecasts.count && !bills.count && !invoices.count) {
+
+            //TODO:: this should be v2
+            //await getSalesOrder(options, forecastNumber, forecastPeriod, rate, userId);
 
             await getInvoice(options, forecastNumber, forecastPeriod, rate, userId);
 
@@ -334,41 +543,47 @@ const generateReportHandler = async (req, reply) => {
 
 
 
-        let check = date.clone().subtract(Math.abs(-2), forecastPeriod).startOf(forecastPeriod);
+        let check = date.clone().add(0, forecastPeriod).startOf(forecastPeriod);
         let month = check.format('MMMM');
 
-        // console.log(invoiceForecasts.rows)
+
+        let closingBalances = [];
+        let nairaOpeningBalance = parseFloat(initialOpeningBalance.nairaOpeningBalance)
+        let dollarOpeningBalance = parseFloat(initialOpeningBalance.dollarOpeningBalance)
         let openingBalances = [
             { "month": month, "amount": parseFloat(initialOpeningBalance.nairaOpeningBalance), "currency": "NGN", "date": check },
             { "month": month, "amount": parseFloat(initialOpeningBalance.dollarOpeningBalance), "currency": "USD", "date": check }
         ];
-        let closingBalances = [];
-        let nairaOpeningBalance = parseFloat(initialOpeningBalance.nairaOpeningBalance)
-        let dollarOpeningBalance = parseFloat(initialOpeningBalance.dollarOpeningBalance)
+
         for (i = 0; i < invoiceForecasts.rows.length - 2; i++) {
-            //console.log('invoice to sum', invoiceForecasts.rows[i])
             let invoiceForeacastClosingBalance = invoiceForecasts.rows[i].currency === 'NGN' ? invoiceForecasts.rows[i].nairaClosingBalance : invoiceForecasts.rows[i].dollarClosingBalance
             let billForeacastClosingBalance = billForecasts.rows[i].currency === 'NGN' ? billForecasts.rows[i].nairaClosingBalance : billForecasts.rows[i].dollarClosingBalance
 
-            let check = moment(invoiceForecasts.rows[i + 2].month, 'YYYY-MM-DD');
+            let openingBalDate = moment(invoiceForecasts.rows[i + 2].month, 'YYYY-MM-DD')
+            let opneingBalMonth = openingBalDate.format('MMMM');
 
-            let month = check.format('MMMM');
-            // console.log('first currency', invoiceForecasts.rows[i].currency);
+
+            let closingBalDate = moment(invoiceForecasts.rows[i].month, 'YYYY-MM-DD')
+            let closingBalMonth = closingBalDate.format('MMMM');
+
             if (invoiceForecasts.rows[i].currency === 'NGN') {
+
+
                 nairaOpeningBalance += parseFloat(invoiceForeacastClosingBalance) - parseFloat(billForeacastClosingBalance)
-                openingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
-                closingBalances.push({ "month": month, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+                openingBalances.push({ "month": opneingBalMonth, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": openingBalDate })
+                closingBalances.push({ "month": closingBalMonth, "amount": nairaOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": closingBalDate })
             } else {
                 dollarOpeningBalance += parseFloat(invoiceForeacastClosingBalance) - parseFloat(billForeacastClosingBalance)
-                openingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
-                closingBalances.push({ "month": month, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": check })
+                openingBalances.push({ "month": opneingBalMonth, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": openingBalDate })
+                closingBalances.push({ "month": closingBalMonth, "amount": dollarOpeningBalance, "currency": invoiceForecasts.rows[i].currency, "date": closingBalDate })
             }
         }
 
 
         // Last Closing balance
-        check = date.clone().add(Math.abs(forecastNumber), forecastPeriod).startOf(forecastPeriod);
-        month = check.format('MMMM');
+        closingBalDate = date.clone().add(Math.abs(forecastNumber - 1), forecastPeriod).startOf(forecastPeriod);
+        closingBalMonth = closingBalDate.format('MMMM');
+
 
         // get last item from opening balance
         let dollarLastOpeningBalance = openingBalances.at(-1);
@@ -386,26 +601,25 @@ const generateReportHandler = async (req, reply) => {
         let lastNairaClosingBalance = parseFloat(nairaLastOpeningBalance.amount) + parseFloat(nairaLastInvoice.nairaClosingBalance) - parseFloat(nairaLastBill.nairaClosingBalance);
         // then push to closing Balance
 
-        closingBalances.push({ "month": month, "amount": lastNairaClosingBalance, "currency": "NGN", "date": check })
-        closingBalances.push({ "month": month, "amount": lastDollarClosingBalance, "currency": "USD", "date": check })
+        closingBalances.push({ "month": closingBalMonth, "amount": lastNairaClosingBalance, "currency": "NGN", "date": closingBalDate })
+        closingBalances.push({ "month": closingBalMonth, "amount": lastDollarClosingBalance, "currency": "USD", "date": closingBalDate })
 
 
         // TODO:: remove this
 
         // loop through opening balance to get cash inflow from invoiced sales total and cash outflow on currennt trade payables total
         for (j = 0; j < openingBalances.length / 2; j++) {
-            console.log('doing');
             startDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').startOf(forecastPeriod).format('YYYY-MM-DD');
             endDate = moment(openingBalances[j * 2].date, 'YYYY-MM-DD').endOf(forecastPeriod).format('YYYY-MM-DD')
 
         }
+
 
         // Allows you to generate and download report
         if (download) {
             const workbook = new ExcelJS.Workbook();
             workbook.calcProperties.fullCalcOnLoad = true;
             const sheet = workbook.addWorksheet('My Sheet');
-            console.log('doing great');
 
 
             const monthRow = sheet.getRow(1)
@@ -418,7 +632,6 @@ const generateReportHandler = async (req, reply) => {
 
             for (const [rowNum, inputData] of openingBalances.entries()) {
 
-                // console.log('row: ', rowNum, ', data', inputData);
                 monthRow.getCell(rowNum + 2).value = inputData.month
                 currencyRow.getCell(rowNum + 2).value = inputData.currency
                 openingBalanceRow.getCell(rowNum + 2).value = inputData.amount
@@ -455,23 +668,22 @@ const generateReportHandler = async (req, reply) => {
 
                 inputData.dueDate = moment(inputData.dueDate, 'YYYY-MM-DD').format('MMMM');
 
-                for (i = 2; i < invoiceForecasts.rows.length + 2; i++) {
+                for (i = 1; i < invoiceForecasts.rows.length + 1; i++) {
 
-                    // console.log('invoice due date: ', inputData.dueDate);
-                    month = moment(invoiceForecasts.rows[i - 2].month, 'YYYY-MM-DD').format('MMMM');
+                    month = moment(invoiceForecasts.rows[i - 1].month, 'YYYY-MM-DD').format('MMMM');
 
                     if ((inputData.dueDate === month)
-                        && (inputData.currencyCode.toLowerCase() === invoiceForecasts.rows[i - 2].currency.toLowerCase())) {
+                        && (inputData.currencyCode.toLowerCase() === invoiceForecasts.rows[i - 1].currency.toLowerCase())) {
 
 
                         if (inputData.currencyCode.toLowerCase() === 'NGN'.toLowerCase()) {
 
-                            rowX.getCell(i).value = inputData.balance
+                            rowX.getCell(i + 1).value = inputData.balance
                         }
 
                         if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
 
-                            rowX.getCell(i).value = inputData.balance
+                            rowX.getCell(i + 1).value = inputData.balance
                         }
                     }
 
@@ -524,24 +736,22 @@ const generateReportHandler = async (req, reply) => {
 
             newArray = []
             for (const [rowNum, inputData] of bills.rows.entries()) {
-                // console.log('row number', rowNum);
 
                 const rowX = sheet.getRow(rowNum + endOfInvoice + 4)
 
                 inputData.dueDate = moment(inputData.dueDate, 'YYYY-MM-DD').format("MMMM");
-                // console.log('invoice forecast rows', invoiceForecasts.rows.length)
-                for (i = 2; i < invoiceForecasts.rows.length + 2; i++) {
-                    // console.log('invoice due date: ', inputData.dueDate);
-                    month = moment(invoiceForecasts.rows[i - 2].month, 'YYYY-MM-DD').format('MMMM');
+
+                for (i = 1; i < invoiceForecasts.rows.length + 1; i++) {
+                    month = moment(invoiceForecasts.rows[i - 1].month, 'YYYY-MM-DD').format('MMMM');
                     if ((inputData.dueDate === month)
-                        && (inputData.currencyCode.toLowerCase() === invoiceForecasts.rows[i - 2].currency.toLowerCase())) {
+                        && (inputData.currencyCode.toLowerCase() === invoiceForecasts.rows[i - 1].currency.toLowerCase())) {
 
                         if (inputData.currencyCode.toLowerCase() === 'NGN'.toLowerCase()) {
-                            rowX.getCell(i).value = inputData.balance
+                            rowX.getCell(i + 1).value = inputData.balance
                         }
 
                         if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
-                            rowX.getCell(i).value = inputData.balance
+                            rowX.getCell(i + 1).value = inputData.balance
                         }
                     }
 
@@ -601,7 +811,7 @@ const generateReportHandler = async (req, reply) => {
             const closingBalanceRow = netWorkingCapital
 
             for (const [rowNum, inputData] of closingBalances.entries()) {
-
+                
                 closingBalanceRow.getCell(rowNum + 2).value = inputData.amount
 
                 closingBalanceRow.commit()
@@ -699,7 +909,6 @@ const salesOrderHandler = async (req, reply) => {
         let res;
         let zohoAccessToken = req.body.zohoAccessToken;
 
-        console.log(zohoAccessToken)
 
         const options = {
             headers: {
@@ -708,7 +917,6 @@ const salesOrderHandler = async (req, reply) => {
             }
         }
 
-        // console.log(options)
 
         let url = `${config.ZOHO_BOOK_BASE_URL}/salesorders?organization_id=${config.ORGANIZATION_ID}`;
 
@@ -728,7 +936,6 @@ const salesOrderHandler = async (req, reply) => {
             data: res.data,
         }
     } catch (e) {
-        console.log(e)
         statusCode = e.response.status;
         result = {
             status: false,
@@ -740,4 +947,4 @@ const salesOrderHandler = async (req, reply) => {
 }
 
 
-module.exports = { generateReportHandler, salesOrderHandler }
+module.exports = { generateReportHandler, salesOrderHandler, createOpeningBalanceHandler }

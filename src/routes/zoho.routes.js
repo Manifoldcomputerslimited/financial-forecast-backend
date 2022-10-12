@@ -7,6 +7,10 @@ const generateZohoTokenOpts = {
     handler: tokenController.generateZohoTokenHandler,
 }
 
+const createOpeningbalanceOpts = {
+    handler: zohoController.createOpeningBalanceHandler,
+}
+
 const refreshZohoTokenOpts = {
     handler: tokenController.refreshZohoTokenHandler,
 }
@@ -29,6 +33,8 @@ const salesOrderOpts = {
 }
 
 const zohoRoutes = async (fastify, options) => {
+
+    fastify.post('/zoho/opening/balance/create', createOpeningbalanceOpts)
 
     fastify.register(require("@fastify/auth"))
         .after(() => privateRoutes(fastify))

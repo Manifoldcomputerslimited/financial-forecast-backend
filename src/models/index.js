@@ -40,6 +40,9 @@ db.invoiceForecasts = require("./invoice.forecast.model")(sequelize, Sequelize);
 db.bills = require("./bill.model")(sequelize, Sequelize);
 db.billForecasts = require("./bill.forecast.model")(sequelize, Sequelize);
 db.initialBalances = require("./initial.balance.model")(sequelize, Sequelize);
+db.openingBalances = require("./opening.balance.model")(sequelize, Sequelize);
+db.sales = require("./sale.model")(sequelize, Sequelize);
+db.saleForecasts = require("./sale.forecast.model")(sequelize, Sequelize);
 
 db.tokens.belongsTo(db.users, { foreignKey: "userId" });
 db.users.hasMany(db.tokens, { foreignKey: "userId" });

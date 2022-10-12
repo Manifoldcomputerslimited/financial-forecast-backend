@@ -1,9 +1,14 @@
 const { Op } = require('sequelize');
 const db = require("../models");
-const Invoice = db.invoices;
+
 const InvoiceForecast = db.invoiceForecasts;
-const Bill = db.bills;
+const SaleForecast = db.saleForecasts;
 const BillForecast = db.billForecasts;
+const OpeningBalance = db.openingBalances;
+
+const Invoice = db.invoices;
+const Bill = db.bills;
+
 const InitialBalance = db.initialBalances;
 
 const createInvoiceForecast = async (userId, naira, dollar, month, forecastNumber, forecastPeriod, currency) => {
@@ -20,12 +25,6 @@ const createInvoiceForecast = async (userId, naira, dollar, month, forecastNumbe
     );
 }
 
-const createInvoice = async ({ payload }) => {
-    await Invoice.create(
-        payload
-    );
-}
-
 const createBillForecast = async (userId, naira, dollar, month, forecastNumber, forecastPeriod, currency) => {
 
     await BillForecast.create(
@@ -37,6 +36,27 @@ const createBillForecast = async (userId, naira, dollar, month, forecastNumber, 
             forecastType: `${forecastNumber} ${forecastPeriod}`,
             currency: currency
         }
+    );
+}
+
+const createSaleForecast = async (userId, naira, dollar, month, forecastNumber, forecastPeriod, currency) => {
+
+    await SaleForecast.create(
+        {
+            userId: userId,
+            nairaClosingBalance: naira,
+            dollarClosingBalance: dollar,
+            month: month,
+            forecastType: `${forecastNumber} ${forecastPeriod}`,
+            currency: currency
+        }
+    );
+}
+
+
+const createInvoice = async ({ payload }) => {
+    await Invoice.create(
+        payload
     );
 }
 
@@ -116,10 +136,26 @@ const fetchAllBillForecast = async ({ payload }) => {
 }
 
 const createInitialBalance = async ({ startingBalance }) => {
-    await InitialBalance.create(
+    return await InitialBalance.create(
         startingBalance
     );
 }
+
+const createOpeningBalance = async ({ payload }) => {
+    return await OpeningBalance.create(payload)
+}
+
+const getPreviousDayOpeningBalance = async ({ prevOpeningBalData }) => {
+    return await OpeningBalance.findOne({
+        where: {
+            createdAt: {
+                [Op.gt]: prevOpeningBalData.yesterday_start,
+                [Op.lt]: prevOpeningBalData.yesterday_end
+            }
+        }
+    })
+}
+
 
 
 module.exports = {
@@ -132,5 +168,7 @@ module.exports = {
     getInitialBalance,
     fetchAllInvoiceForecast,
     fetchAllBillForecast,
-    createInitialBalance
+    createInitialBalance,
+    createOpeningBalance,
+    getPreviousDayOpeningBalance
 }

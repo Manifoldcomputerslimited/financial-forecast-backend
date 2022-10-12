@@ -265,7 +265,8 @@ const getSalesOrder = async (options, forecastNumber, forecastPeriod, rate, user
     }
 }
 
-// USE CRON JOB.
+// This function will be executed by a CRON JOB daily 
+// stores todays exchange rate and opening in the database
 const createOpeningBalanceHandler = async (req, reply) => {
     try {
         const TODAY_START = moment().startOf('day').format();
@@ -285,7 +286,17 @@ const createOpeningBalanceHandler = async (req, reply) => {
             });
         }
 
-        zoho = await axios.post('https://accounts.zoho.com/oauth/v2/token?refresh_token=1000.2850a17db7c34f1c1b49bc4ab95c5d8b.96921da50a793a7b48c2e97dc9d509a7&client_id=1000.TJGNSOYFT192B23XTR4P5889QPF6RC&client_secret=cacd523d84375e5c039b3c9474e4c0ffd6fbd311e4&redirect_uri=https://manifoldcomputers.com&grant_type=refresh_token');
+        // get zoho access token
+        url = `${config.ZOHO_BASE_URL}?refresh_token=${config.ZOHO_REFRESH_TOKEN}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
+
+        zoho = await axios.post(url);
+      
+        if (zoho.data.error) {
+            return reply.code(400).send({
+                status: false,
+                message: 'Invalid code',
+            });
+        }
 
         const options = {
             headers: {
@@ -294,6 +305,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
             }
         }
 
+        // get current exchange rate from zoho
         let rateUrl = `${config.ZOHO_BOOK_BASE_URL}/settings/currencies/${config.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${config.ORGANIZATION_ID}`;
 
         res = await axios.get(rateUrl, options);
@@ -304,7 +316,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
                 message: 'Could not fetch exchange rate',
             });
 
-
+        // fetch all bank accounts details
         let bankAccountUrl = `${config.ZOHO_BOOK_BASE_URL}/bankaccounts?organization_id=${config.ORGANIZATION_ID}`;
 
         resp = await axios.get(bankAccountUrl, options);

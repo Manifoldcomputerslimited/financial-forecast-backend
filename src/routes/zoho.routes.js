@@ -7,6 +7,10 @@ const generateZohoTokenOpts = {
     handler: tokenController.generateZohoTokenHandler,
 }
 
+const createOpeningbalanceOpts = {
+    handler: zohoController.createOpeningBalanceHandler,
+}
+
 const refreshZohoTokenOpts = {
     handler: tokenController.refreshZohoTokenHandler,
 }
@@ -19,19 +23,18 @@ const updateExchangeRateOpts = {
     handler: exchangeController.updateExchangeRateHandler,
 }
 
-const openingBalanceOpts = {
-    handler: zohoController.openingBalanceHandler,
+const generateReportOpts = {
+    handler: zohoController.generateReportHandler,
 }
 
-const downloadReportOpts = {
-    handler: zohoController.downloadReportHandler,
-}
 
 const salesOrderOpts = {
     handler: zohoController.salesOrderHandler,
 }
 
 const zohoRoutes = async (fastify, options) => {
+
+    fastify.post('/zoho/opening/balance/create', createOpeningbalanceOpts)
 
     fastify.register(require("@fastify/auth"))
         .after(() => privateRoutes(fastify))
@@ -49,15 +52,10 @@ const privateRoutes = async (fastify, options) => {
         ...updateExchangeRateOpts
     });
 
-    // generate opening balance from zoho
-    fastify.post('/zoho/opening/balance', {
+    // generate report from zoho
+    fastify.post('/zoho/generate/report', {
         preHandler: fastify.auth([verifyToken]),
-        ...openingBalanceOpts
-    });
-
-    fastify.post('/zoho/report/download', {
-        preHandler: fastify.auth([verifyToken]),
-        ...downloadReportOpts
+        ...generateReportOpts
     });
 
     // get list of sales order

@@ -34,7 +34,7 @@ const salesOrderOpts = {
 
 const zohoRoutes = async (fastify, options) => {
 
-    fastify.post('/zoho/opening/balance/create', createOpeningbalanceOpts)
+    fastify.get('/zoho/opening/balance/create', createOpeningbalanceOpts)
 
     fastify.register(require("@fastify/auth"))
         .after(() => privateRoutes(fastify))

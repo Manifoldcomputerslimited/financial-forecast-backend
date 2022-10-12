@@ -68,7 +68,14 @@ const getInvoice = async (options, forecastNumber, forecastPeriod, rate, userId)
 
     }
 
-    for (const [i, e] of resp.data.invoices.entries()) {
+    const filteredInvoices = resp.data.invoices.filter((item, index) =>
+        item.status == 'sent' ||
+        item.status == 'overdue' ||
+        item.status == 'partially_paid' ||
+        item.status == 'unpaid'
+    );
+
+    for (const [i, e] of filteredInvoices.entries()) {
 
         if (parseFloat(e.balance) > 0) {
 
@@ -97,6 +104,7 @@ const getInvoice = async (options, forecastNumber, forecastPeriod, rate, userId)
 
         }
     }
+    return;
 
 }
 
@@ -144,7 +152,13 @@ const getBill = async (options, forecastNumber, forecastPeriod, rate, userId) =>
 
     }
 
-    for (const [i, e] of resp.data.bills.entries()) {
+    const filteredBills = resp.data.bills.filter((item, index) =>
+        item.status == 'open' ||
+        item.status == 'overdue' ||
+        item.status == 'partially_paid'
+    );
+
+    for (const [i, e] of filteredBills.entries()) {
 
         if (parseFloat(e.balance) > 0) {
 
@@ -497,7 +511,7 @@ const generateReportHandler = async (req, reply) => {
                 });
             }
 
-            dollarOpening =  previousDayOpeningBalance.amount / previousDayOpeningBalance.rate;
+            dollarOpening = previousDayOpeningBalance.amount / previousDayOpeningBalance.rate;
 
             let startingBalance = {
                 userId,
@@ -811,7 +825,7 @@ const generateReportHandler = async (req, reply) => {
             const closingBalanceRow = netWorkingCapital
 
             for (const [rowNum, inputData] of closingBalances.entries()) {
-                
+
                 closingBalanceRow.getCell(rowNum + 2).value = inputData.amount
 
                 closingBalanceRow.commit()

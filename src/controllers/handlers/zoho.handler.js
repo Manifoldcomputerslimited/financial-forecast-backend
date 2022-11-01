@@ -10,6 +10,7 @@ const {
     createBill,
     createBillForecast,
     createInitialBalance,
+    createSaleForecast,
     getInitialBalance,
     fetchAllInvoiceForecast,
     fetchAllBillForecast,
@@ -234,12 +235,19 @@ const getSalesOrder = async (options, forecastNumber, forecastPeriod, rate, user
 
     }
 
-    for (const [i, e] of resp.data.sales.entries()) {
+    const filteredSales = resp.data.sales.filter((item, index) =>
+        item.status == 'sent' ||
+        item.status == 'overdue' ||
+        item.status == 'partially_paid' ||
+        item.status == 'unpaid'
+    );
 
-        if (parseFloat(e.total) > 0) {
+    for (const [i, e] of filteredSales.entries()) {
+
+        if (parseFloat(e.balance) > 0) {
 
             if ((rate.old !== rate.latest) && e.currency_code === 'NGN') {
-                e.total = (e.total / rate.old) * rate.latest;
+                e.balance = (e.balance / rate.old) * rate.latest;
             }
 
             const payload = {
@@ -252,14 +260,14 @@ const getSalesOrder = async (options, forecastNumber, forecastPeriod, rate, user
                 date: e.date,
                 shipmentDate: e.shipment_date,
                 currencyCode: e.currency_code,
-                total: e.total,
-                naira: e.currency_code === 'NGN' ? e.total : 0.0,
-                dollar: e.currency_code === 'USD' ? e.total : 0.0,
+                balance: e.balance,
+                naira: e.currency_code === 'NGN' ? e.balance : 0.0,
+                dollar: e.currency_code === 'USD' ? e.balance : 0.0,
                 exchangeRate: e.exchange_rate,
                 forecastType: `${forecastNumber} ${forecastPeriod}`
             }
 
-            await createBill({ payload })
+            await createSale({ payload })
         }
 
     }

@@ -13,9 +13,6 @@ sequelize = new Sequelize(
         port: config.MYSQL_DOCKER_PORT,
         dialect: "mysql",
         operatorsAliases: 0,
-        dialectOptions: {
-            useUTC: false,
-        },
         timezone: "+01:00",
 
         pool: {
@@ -50,7 +47,6 @@ db.users.hasMany(db.tokens, { foreignKey: "userId" });
 sequelize
     .sync({ alter: true })
     .then(async () => {
-        console.log("updated table");
 
         // await db.roles.create({
         //   name: "Admin",

@@ -841,7 +841,7 @@ const generateReportHandler = async (req, reply) => {
             cashOutflowsOnCurrentTradePayables.commit()
             totalCashOutflows.commit()
 
-            netWorkingCapital.getCell(1).value = 'Net Working Capital/(Deficit)';
+            netWorkingCapital.getCell(1).value = 'Closing Balance';
             const closingBalanceRow = netWorkingCapital
 
             for (const [rowNum, inputData] of closingBalances.entries()) {
@@ -912,7 +912,7 @@ const generateReportHandler = async (req, reply) => {
                             naira: totalNairaCashOutflow,
                             dollar: totalDollarCashOutflow
                         },
-                        networkingCapital: {
+                        closingBalance: {
                             naira: totalNairaNetWorkingCapital,
                             dollar: totalDollarNetWorkingCapital
                         }

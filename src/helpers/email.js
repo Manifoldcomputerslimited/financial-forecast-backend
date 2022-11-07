@@ -12,7 +12,6 @@ const sendEmailTemplate = async (templateDetails) => {
 
     try {
         //template could be any of the following: invite, passwordChanged.
-        console.log('templateToUse: ' + templateToUse);
         if (templateToUse == "invite") {
             filePath = path.join(__dirname, '../emailTemplates/index.html');
         }
@@ -30,13 +29,10 @@ const sendEmailTemplate = async (templateDetails) => {
             url: url ?? '',
         };
 
-        console.log('replacements: ' + JSON.stringify(replacements));
         const htmlToSend = template(replacements);
         return htmlToSend;
     }
     catch (error) {
-        console.log('could not send email template');
-        console.log(error)
         return error
     }
 
@@ -45,7 +41,6 @@ const sendEmailTemplate = async (templateDetails) => {
 
 async function sendEmail(to, subject, body, detail) {
     try {
-        console.log('sending email');
         const transporter = nodemailer.createTransport(
             {
                 host: config.SMTP_HOST,
@@ -75,8 +70,6 @@ async function sendEmail(to, subject, body, detail) {
         return result;
     }
     catch (error) {
-        console.log(error);
-        console.log('could not send email');
         return error
     }
 }

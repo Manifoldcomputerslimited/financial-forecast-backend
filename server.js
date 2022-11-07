@@ -48,7 +48,7 @@ app.register(
 const start = async () => {
   try {
     const PORT = parseInt(config.PORT)
-    await app.listen(PORT, '0.0.0.0');
+    await app.listen({ port: PORT });
   } catch (err) {
     app.log.error(err);
     process.exit(1);

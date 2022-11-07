@@ -30,7 +30,6 @@ const generateTokens = async (user) => {
       const user = await User.findOne({ where: { email: payload.email } });
 
       await user.update({ token: refreshToken });
-      console.log(user)
     }
 
     return Promise.resolve({ accessToken, refreshToken });

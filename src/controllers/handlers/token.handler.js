@@ -24,7 +24,6 @@ const options = {
 const generateZohoTokenHandler = async (req, reply) => {
     const { code } = req.body;
 
-    console.log('generating zoho token');
     try {
         let user;
         let resp;
@@ -52,9 +51,7 @@ const generateZohoTokenHandler = async (req, reply) => {
 
         // new to zoho
         if (!zohoToken) {
-            console.log('new to zoho');
             if (!code) {
-                console.log('code is required')
                 return reply.code(400).send({
                     status: false,
                     message: 'Code is required',
@@ -72,7 +69,6 @@ const generateZohoTokenHandler = async (req, reply) => {
                     message: 'Invalid code',
                 });
 
-            console.log('new to zoho', resp)
             // store the zoho token in the zoho table
             zohoToken = await Token.create({
                 userId: user.id,
@@ -81,10 +77,8 @@ const generateZohoTokenHandler = async (req, reply) => {
                 zohoTokenExpiry: dayjs().add(3600, 'second').utc(1).format(),
                 zohoTokenDate: new Date().addHours(1)
             });
-            console.log('updating user')
 
         } else {
-            console.log('refreshing user')
             url = `${config.ZOHO_BASE_URL}?refresh_token=${zohoToken.zohoRefreshToken}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
 
             resp = await axios.post(url,
@@ -107,7 +101,6 @@ const generateZohoTokenHandler = async (req, reply) => {
             isZohoAuthenticated: true
         })
 
-        console.log('what', zohoToken);
 
         statusCode = 200;
         result = {
@@ -120,7 +113,6 @@ const generateZohoTokenHandler = async (req, reply) => {
         }
 
     } catch (e) {
-        console.log(e)
         statusCode = e.code;
         result = {
             status: false,

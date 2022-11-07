@@ -97,7 +97,6 @@ const getExchangeRateHandler = async (req, reply) => {
         }
 
     } catch (e) {
-        console.log(e)
         statusCode = e.code;
         result = {
             status: false,
@@ -202,7 +201,6 @@ const updateExchangeRateHandler = async (req, reply) => {
             data: rate,
         }
     } catch (e) {
-        console.log(e)
         statusCode = e.code;
         result = {
             status: false,

@@ -386,7 +386,6 @@ const updateUserRoleHandler = async (req, reply) => {
         };
 
     } catch (e) {
-        console.log(e)
         statusCode = e.code;
         result = {
             status: false,
@@ -468,7 +467,6 @@ const forgotPasswordHandler = async (req, reply) => {
             url: `${config.BASE_URL}/reset-password/${updatedCipherText}`,
         }
 
-        console.log(details)
         // invite user by sending an email
         await sendEmail(email, "Reset Manifold Forecast Password", "Please click the link below to reset password", details);
 

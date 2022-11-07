@@ -142,6 +142,40 @@ const getUserOpts = {
   },
 };
 
+const getUsersOpts = {
+  tags: ['Authentication'],
+  description: 'Get all user information',
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              firstName: { type: 'string' },
+              lastName: { type: 'string' },
+              email: { type: 'string' },
+              status: { type: 'boolean' },
+              role: { type: 'boolean' },
+              super: { type: 'boolean' },
+              inviteToken: { type: 'string' },
+              token: { type: 'string' },
+              inviteDate: { type: 'string' },
+              isZohoAuthenticated: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    204: status.noConent,
+    400: status.badRequest,
+    500: status.internalServer,
+  },
+};
+
 const updatePasswordOpts = {
   tags: ['Authentication'],
   description: 'User who wants to change password',
@@ -237,6 +271,7 @@ module.exports = {
   loginUserOpts,
   refreshTokenOpts,
   getUserOpts,
+  getUsersOpts,
   updatePasswordOpts,
   forgotPasswordOpts,
   resetPasswordOpts,

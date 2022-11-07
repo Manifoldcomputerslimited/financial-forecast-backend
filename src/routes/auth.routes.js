@@ -23,7 +23,7 @@ const getUserOpts = {
 };
 
 const getUsersOpts = {
-    // schema: authSchema.getUsersOpts,
+    schema: authSchema.getUsersOpts,
     handler: authController.getUsersHandler,
 };
 

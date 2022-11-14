@@ -10,6 +10,7 @@ const {
   createBill,
   createBillForecast,
   createInitialBalance,
+  createSale,
   createSaleForecast,
   getInitialBalance,
   fetchAllInvoiceForecast,
@@ -104,6 +105,7 @@ const getInvoice = async (
     );
   }
 
+  //TODO:: reference sales order move it up
   const filteredInvoices = resp.data.invoices.filter(
     (item, index) =>
       item.status == 'sent' ||
@@ -180,6 +182,7 @@ const getBill = async (
       .endOf(forecastPeriod)
       .format('YYYY-MM-DD');
 
+    //TODO:: add filter here
     const filteredItems = resp.data.bills.filter(
       (item, index) => item.due_date >= startDate && item.due_date <= endDate
     );
@@ -221,6 +224,7 @@ const getBill = async (
     );
   }
 
+  //TODO:: 
   const filteredBills = resp.data.bills.filter(
     (item, index) =>
       item.status == 'open' ||
@@ -296,18 +300,23 @@ const getSalesOrder = async (
       .endOf(forecastPeriod)
       .format('YYYY-MM-DD');
 
-    const filteredItems = resp.data.sales.filter(
+    const filteredSales = resp.data.salesorders.filter(
       (item, index) =>
-        item.shipment_date >= startDate && item.shipment_date <= endDate
+        item.shipment_date >= startDate &&
+        item.shipment_date <= endDate &&
+        (item.status == 'open' ||
+          item.status == 'overdue' ||
+          item.status == 'partially_invoiced' ||
+          item.status == 'draft')
     );
 
-    dollarClosingBalance = filteredItems.reduce(function (acc, obj) {
+    dollarClosingBalance = filteredSales.reduce(function (acc, obj) {
       total = obj.currency_code === 'USD' ? obj.total : 0.0;
 
       return acc + total;
     }, 0);
 
-    nairaClosingBalance = filteredItems.reduce(function (acc, obj) {
+    nairaClosingBalance = filteredSales.reduce(function (acc, obj) {
       total = obj.currency_code === 'NGN' ? obj.total : 0.0;
 
       if (rate.old !== rate.latest) {
@@ -336,42 +345,39 @@ const getSalesOrder = async (
       forecastPeriod,
       'USD'
     );
-  }
 
-  const filteredSales = resp.data.sales.filter(
-    (item, index) =>
-      item.status == 'sent' ||
-      item.status == 'overdue' ||
-      item.status == 'partially_paid' ||
-      item.status == 'unpaid'
-  );
+    filteredSales.reduce(async function (a, e) {
 
-  for (const [i, e] of filteredSales.entries()) {
-    if (parseFloat(e.balance) > 0) {
-      if (rate.old !== rate.latest && e.currency_code === 'NGN') {
-        e.balance = (e.balance / rate.old) * rate.latest;
+      if (parseFloat(e.total) > 0) {
+        if (rate.old !== rate.latest && e.currency_code === 'NGN') {
+          e.total = (e.total / rate.old) * rate.latest;
+        }
+
+        const payload = {
+          userId,
+          saleOrderId: e.salesorder_id,
+          customerName: e.customer_id,
+          status: e.status,
+          salesOrderNumber: e.salesorder_number,
+          refrenceNumber: e.reference_number,
+          date: e.date,
+          shipmentDate: e.shipment_date,
+          currencyCode: e.currency_code,
+          balance: e.total,
+          naira: e.currency_code === 'NGN' ? e.total : 0.0,
+          dollar: e.currency_code === 'USD' ? e.total : 0.0,
+          exchangeRate: e.exchange_rate,
+          forecastType: `${forecastNumber} ${forecastPeriod}`,
+        };
+
+        await createSale({ payload });
       }
 
-      const payload = {
-        userId,
-        saleOrderId: e.salesorder_id,
-        customerName: e.customer_id,
-        status: e.status,
-        salesOrderNumber: e.salesorder_number,
-        refrenceNumber: e.reference_number,
-        date: e.date,
-        shipmentDate: e.shipment_date,
-        currencyCode: e.currency_code,
-        balance: e.balance,
-        naira: e.currency_code === 'NGN' ? e.balance : 0.0,
-        dollar: e.currency_code === 'USD' ? e.balance : 0.0,
-        exchangeRate: e.exchange_rate,
-        forecastType: `${forecastNumber} ${forecastPeriod}`,
-      };
+      return;
+    }, 0);
 
-      await createSale({ payload });
-    }
   }
+
 };
 
 // This function will be executed by a CRON JOB daily
@@ -1147,6 +1153,7 @@ const generateReportHandler = async (req, reply) => {
       };
     }
   } catch (e) {
+    console.log(e);
     statusCode = e.response.status;
     result = {
       status: false,

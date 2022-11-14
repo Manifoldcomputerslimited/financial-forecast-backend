@@ -15,11 +15,14 @@ const {
   getInitialBalance,
   fetchAllInvoiceForecast,
   fetchAllBillForecast,
+  fetchAllSaleForecast,
   fetchAllInvoice,
   fetchAllBill,
+  fetchAllSale,
   createOpeningBalance,
   getPreviousDayOpeningBalance,
 } = require('../../helpers/dbQuery');
+const { saleForecasts } = require('../../models');
 moment().format();
 
 const getInvoice = async (
@@ -63,18 +66,23 @@ const getInvoice = async (
       .endOf(forecastPeriod)
       .format('YYYY-MM-DD');
 
-    //TODO:: add filters here
-    const filteredItems = resp.data.invoices.filter(
-      (item, index) => item.due_date >= startDate && item.due_date <= endDate
+    const filteredInvoices = resp.data.invoices.filter(
+      (item, index) =>
+        item.due_date >= startDate &&
+        item.due_date <= endDate &&
+        (item.status == 'sent' ||
+          item.status == 'overdue' ||
+          item.status == 'partially_paid' ||
+          item.status == 'unpaid')
     );
 
-    dollarClosingBalance = filteredItems.reduce(function (acc, obj) {
+    dollarClosingBalance = filteredInvoices.reduce(function (acc, obj) {
       balance = obj.currency_code === 'USD' ? obj.balance : 0.0;
 
       return acc + balance;
     }, 0);
 
-    nairaClosingBalance = filteredItems.reduce(function (acc, obj) {
+    nairaClosingBalance = filteredInvoices.reduce(function (acc, obj) {
       balance = obj.currency_code === 'NGN' ? obj.balance : 0.0;
 
       if (rate.old !== rate.latest) {
@@ -103,44 +111,36 @@ const getInvoice = async (
       forecastPeriod,
       'USD'
     );
-  }
 
-  //TODO:: reference sales order move it up
-  const filteredInvoices = resp.data.invoices.filter(
-    (item, index) =>
-      item.status == 'sent' ||
-      item.status == 'overdue' ||
-      item.status == 'partially_paid' ||
-      item.status == 'unpaid'
-  );
+    filteredInvoices.reduce(async function (a, e) {
+      if (parseFloat(e.balance) > 0) {
+        if (rate.old !== rate.latest && e.currency_code === 'NGN') {
+          e.balance = (e.balance / rate.old) * rate.latest;
+        }
 
-  for (const [i, e] of filteredInvoices.entries()) {
-    if (parseFloat(e.balance) > 0) {
-      if (rate.old !== rate.latest && e.currency_code === 'NGN') {
-        e.balance = (e.balance / rate.old) * rate.latest;
+        const payload = {
+          userId,
+          invoiceId: e.invoice_id,
+          customerName: e.customer_name,
+          status: e.status,
+          invoiceNumber: e.invoice_number,
+          refrenceNumber: e.reference_number,
+          date: e.date,
+          dueDate: e.due_date,
+          currencyCode: e.currency_code,
+          balance: e.balance,
+          naira: e.currency_code === 'NGN' ? e.balance : 0.0,
+          dollar: e.currency_code === 'USD' ? e.balance : 0.0,
+          exchangeRate: e.exchange_rate,
+          forecastType: `${forecastNumber} ${forecastPeriod}`,
+        };
+
+        await createInvoice({ payload });
       }
 
-      const payload = {
-        userId,
-        invoiceId: e.invoice_id,
-        customerName: e.customer_name,
-        status: e.status,
-        invoiceNumber: e.invoice_number,
-        refrenceNumber: e.reference_number,
-        date: e.date,
-        dueDate: e.due_date,
-        currencyCode: e.currency_code,
-        balance: e.balance,
-        naira: e.currency_code === 'NGN' ? e.balance : 0.0,
-        dollar: e.currency_code === 'USD' ? e.balance : 0.0,
-        exchangeRate: e.exchange_rate,
-        forecastType: `${forecastNumber} ${forecastPeriod}`,
-      };
-
-      await createInvoice({ payload });
-    }
+      return;
+    }, 0);
   }
-  return;
 };
 
 const getBill = async (
@@ -182,18 +182,22 @@ const getBill = async (
       .endOf(forecastPeriod)
       .format('YYYY-MM-DD');
 
-    //TODO:: add filter here
-    const filteredItems = resp.data.bills.filter(
-      (item, index) => item.due_date >= startDate && item.due_date <= endDate
+    const filteredBills = resp.data.bills.filter(
+      (item, index) =>
+        item.due_date >= startDate &&
+        item.due_date <= endDate &&
+        (item.status == 'open' ||
+          item.status == 'overdue' ||
+          item.status == 'partially_paid')
     );
 
-    dollarClosingBalance = filteredItems.reduce(function (acc, obj) {
+    dollarClosingBalance = filteredBills.reduce(function (acc, obj) {
       balance = obj.currency_code === 'USD' ? obj.balance : 0.0;
 
       return acc + balance;
     }, 0);
 
-    nairaClosingBalance = filteredItems.reduce(function (acc, obj) {
+    nairaClosingBalance = filteredBills.reduce(function (acc, obj) {
       balance = obj.currency_code === 'NGN' ? obj.balance : 0.0;
 
       if (rate.old !== rate.latest) {
@@ -222,42 +226,36 @@ const getBill = async (
       forecastPeriod,
       'USD'
     );
-  }
 
-  //TODO:: 
-  const filteredBills = resp.data.bills.filter(
-    (item, index) =>
-      item.status == 'open' ||
-      item.status == 'overdue' ||
-      item.status == 'partially_paid'
-  );
+    filteredBills.reduce(async function (a, e) {
+      if (parseFloat(e.balance) > 0) {
+        if (rate.old !== rate.latest && e.currency_code === 'NGN') {
+          e.balance = (e.balance / rate.old) * rate.latest;
+        }
 
-  for (const [i, e] of filteredBills.entries()) {
-    if (parseFloat(e.balance) > 0) {
-      if (rate.old !== rate.latest && e.currency_code === 'NGN') {
-        e.balance = (e.balance / rate.old) * rate.latest;
+        const payload = {
+          userId,
+          billId: e.bill_id,
+          vendorId: e.vendor_id,
+          vendorName: e.vendor_name,
+          status: e.status,
+          invoiceNumber: e.invoice_number,
+          refrenceNumber: e.reference_number,
+          date: e.date,
+          dueDate: e.due_date,
+          currencyCode: e.currency_code,
+          balance: e.balance,
+          naira: e.currency_code === 'NGN' ? e.balance : 0.0,
+          dollar: e.currency_code === 'USD' ? e.balance : 0.0,
+          exchangeRate: e.exchange_rate,
+          forecastType: `${forecastNumber} ${forecastPeriod}`,
+        };
+
+        await createBill({ payload });
       }
 
-      const payload = {
-        userId,
-        billId: e.bill_id,
-        vendorId: e.vendor_id,
-        vendorName: e.vendor_name,
-        status: e.status,
-        invoiceNumber: e.invoice_number,
-        refrenceNumber: e.reference_number,
-        date: e.date,
-        dueDate: e.due_date,
-        currencyCode: e.currency_code,
-        balance: e.balance,
-        naira: e.currency_code === 'NGN' ? e.balance : 0.0,
-        dollar: e.currency_code === 'USD' ? e.balance : 0.0,
-        exchangeRate: e.exchange_rate,
-        forecastType: `${forecastNumber} ${forecastPeriod}`,
-      };
-
-      await createBill({ payload });
-    }
+      return;
+    }, 0);
   }
 };
 
@@ -347,7 +345,6 @@ const getSalesOrder = async (
     );
 
     filteredSales.reduce(async function (a, e) {
-
       if (parseFloat(e.total) > 0) {
         if (rate.old !== rate.latest && e.currency_code === 'NGN') {
           e.total = (e.total / rate.old) * rate.latest;
@@ -375,9 +372,7 @@ const getSalesOrder = async (
 
       return;
     }, 0);
-
   }
-
 };
 
 // This function will be executed by a CRON JOB daily
@@ -643,6 +638,8 @@ const generateReportHandler = async (req, reply) => {
     // Get initial opening balance for a particular user
     let initialOpeningBalance = await getInitialBalance({ payload });
 
+    let saleForecasts = await fetchAllSaleForecast({ payload });
+
     // get invoice forecast where forecastType
     let invoiceForecasts = await fetchAllInvoiceForecast({ payload });
 
@@ -699,15 +696,25 @@ const generateReportHandler = async (req, reply) => {
       !invoices.count
     ) {
       //TODO:: this should be v2
-      //await getSalesOrder(options, forecastNumber, forecastPeriod, rate, userId);
+      await getSalesOrder(
+        options,
+        forecastNumber,
+        forecastPeriod,
+        rate,
+        userId
+      );
 
       await getInvoice(options, forecastNumber, forecastPeriod, rate, userId);
 
       await getBill(options, forecastNumber, forecastPeriod, rate, userId);
 
+      sales = await fetchAllSale({ payload });
+
       invoices = await fetchAllInvoice({ payload });
 
       bills = await fetchAllBill({ payload });
+
+      saleForecasts = await fetchAllSaleForecast({ payload });
 
       // get invoice forecast where forecastType
       invoiceForecasts = await fetchAllInvoiceForecast({ payload });
@@ -1153,7 +1160,6 @@ const generateReportHandler = async (req, reply) => {
       };
     }
   } catch (e) {
-    console.log(e);
     statusCode = e.response.status;
     result = {
       status: false,

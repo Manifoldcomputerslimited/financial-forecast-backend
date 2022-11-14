@@ -107,6 +107,19 @@ const fetchAllBill = async ({ payload }) => {
   });
 };
 
+const fetchAllSale = async ({ payload }) => {
+  return await Sale.findAndCountAll({
+    where: {
+      userId: payload.userId,
+      forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
+      createdAt: {
+        [Op.gt]: payload.today_start,
+        [Op.lt]: payload.today_end,
+      },
+    },
+  });
+};
+
 const getInitialBalance = async ({ payload }) => {
   return await InitialBalance.findOne({
     where: {
@@ -146,6 +159,19 @@ const fetchAllBillForecast = async ({ payload }) => {
   });
 };
 
+const fetchAllSaleForecast = async ({ payload }) => {
+  return SaleForecast.findAndCountAll({
+    where: {
+      userId: payload.userId,
+      forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
+      createdAt: {
+        [Op.gt]: payload.today_start,
+        [Op.lt]: payload.today_end,
+      },
+    },
+  });
+};
+
 const createInitialBalance = async ({ startingBalance }) => {
   return await InitialBalance.create(startingBalance);
 };
@@ -174,9 +200,11 @@ module.exports = {
   createSale,
   fetchAllInvoice,
   fetchAllBill,
+  fetchAllSale,
   getInitialBalance,
   fetchAllInvoiceForecast,
   fetchAllBillForecast,
+  fetchAllSaleForecast,
   createInitialBalance,
   createOpeningBalance,
   getPreviousDayOpeningBalance,

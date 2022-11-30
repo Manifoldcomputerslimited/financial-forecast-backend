@@ -635,6 +635,8 @@ const generateReportHandler = async (req, reply) => {
 
     let bills = await fetchAllBill({ payload });
 
+    let sales = await fetchAllSale({ payload });
+
     // Get initial opening balance for a particular user
     let initialOpeningBalance = await getInitialBalance({ payload });
 
@@ -1156,10 +1158,12 @@ const generateReportHandler = async (req, reply) => {
           },
           invoices: invoices.rows.reverse(),
           bills: bills.rows.reverse(),
+          sales: sales.rows.reverse(),
         },
       };
     }
   } catch (e) {
+    console.log(e);
     statusCode = e.response.status;
     result = {
       status: false,

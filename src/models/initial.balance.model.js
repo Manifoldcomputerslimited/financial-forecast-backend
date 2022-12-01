@@ -1,11 +1,19 @@
 module.exports = (sequelize, DataTypes) => {
   const InitialBalance = sequelize.define('initialBalance', {
+    openingBalance: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0.0,
+    },
     nairaOpeningBalance: {
       type: DataTypes.DECIMAL(12, 2),
       defaultValue: 0.0,
     },
     dollarOpeningBalance: {
       type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0.0,
+    },
+    rate: {
+      type: DataTypes.DECIMAL(10, 2),
       defaultValue: 0.0,
     },
     forecastType: {

@@ -83,10 +83,15 @@ const getInvoice = async (
     }, 0);
 
     nairaClosingBalance = filteredInvoices.reduce(function (acc, obj) {
-      balance = obj.currency_code === 'NGN' ? obj.balance : 0.0;
+      balance =
+        obj.currency_code === 'NGN'
+          ? obj.balance
+          : obj.balance * parseFloat(rate.latest).toFixed(2);
 
       if (rate.old !== rate.latest) {
-        balance = (balance / rate.old) * rate.latest;
+        balance =
+          (balance / parseFloat(rate.old).toFixed(2)) *
+          parseFloat(rate.latest).toFixed(2);
       }
 
       return acc + balance;
@@ -94,7 +99,7 @@ const getInvoice = async (
 
     await createInvoiceForecast(
       userId,
-      nairaClosingBalance,
+      parseFloat(nairaClosingBalance).toFixed(2),
       0.0,
       startDate,
       forecastNumber,
@@ -105,7 +110,7 @@ const getInvoice = async (
     await createInvoiceForecast(
       userId,
       0.0,
-      dollarClosingBalance,
+      parseFloat(dollarClosingBalance).toFixed(2),
       startDate,
       forecastNumber,
       forecastPeriod,
@@ -114,8 +119,15 @@ const getInvoice = async (
 
     filteredInvoices.reduce(async function (a, e) {
       if (parseFloat(e.balance) > 0) {
-        if (rate.old !== rate.latest && e.currency_code === 'NGN') {
-          e.balance = (e.balance / rate.old) * rate.latest;
+        if (
+          parseFloat(rate.old).toFixed(2) !==
+            parseFloat(rate.latest).toFixed(2) &&
+          e.currency_code === 'NGN'
+        ) {
+          e.balance =
+            (parseFloat(e.balance).toFixed(2) /
+              parseFloat(rate.old).toFixed(2)) *
+            parseFloat(rate.latest).toFixed(2);
         }
 
         const payload = {
@@ -129,9 +141,12 @@ const getInvoice = async (
           dueDate: e.due_date,
           currencyCode: e.currency_code,
           balance: e.balance,
-          naira: e.currency_code === 'NGN' ? e.balance : 0.0,
+          naira:
+            e.currency_code === 'NGN'
+              ? e.balance
+              : e.balance * parseFloat(rate.latest).toFixed(2),
           dollar: e.currency_code === 'USD' ? e.balance : 0.0,
-          exchangeRate: e.exchange_rate,
+          exchangeRate: parseFloat(e.exchange_rate).toFixed(2),
           forecastType: `${forecastNumber} ${forecastPeriod}`,
         };
 
@@ -198,7 +213,8 @@ const getBill = async (
     }, 0);
 
     nairaClosingBalance = filteredBills.reduce(function (acc, obj) {
-      balance = obj.currency_code === 'NGN' ? obj.balance : 0.0;
+      balance =
+        obj.currency_code === 'NGN' ? obj.balance : obj.balance * rate.latest;
 
       if (rate.old !== rate.latest) {
         balance = (balance / rate.old) * rate.latest;
@@ -245,7 +261,8 @@ const getBill = async (
           dueDate: e.due_date,
           currencyCode: e.currency_code,
           balance: e.balance,
-          naira: e.currency_code === 'NGN' ? e.balance : 0.0,
+          naira:
+            e.currency_code === 'NGN' ? e.balance : e.balance * rate.latest,
           dollar: e.currency_code === 'USD' ? e.balance : 0.0,
           exchangeRate: e.exchange_rate,
           forecastType: `${forecastNumber} ${forecastPeriod}`,
@@ -315,7 +332,8 @@ const getSalesOrder = async (
     }, 0);
 
     nairaClosingBalance = filteredSales.reduce(function (acc, obj) {
-      total = obj.currency_code === 'NGN' ? obj.total : 0.0;
+      total =
+        obj.currency_code === 'NGN' ? obj.total : obj.total * rate.lastest;
 
       if (rate.old !== rate.latest) {
         balance = (balance / rate.old) * rate.latest;
@@ -336,7 +354,7 @@ const getSalesOrder = async (
 
     await createSaleForecast(
       userId,
-      0.0,
+      dollarClosingBalance * rate.latest,
       dollarClosingBalance,
       startDate,
       forecastNumber,
@@ -361,7 +379,7 @@ const getSalesOrder = async (
           shipmentDate: e.shipment_date,
           currencyCode: e.currency_code,
           balance: e.total,
-          naira: e.currency_code === 'NGN' ? e.total : 0.0,
+          naira: e.currency_code === 'NGN' ? e.total : e.balance * rate.latest,
           dollar: e.currency_code === 'USD' ? e.total : 0.0,
           exchangeRate: e.exchange_rate,
           forecastType: `${forecastNumber} ${forecastPeriod}`,
@@ -452,14 +470,9 @@ const createOpeningBalanceHandler = async (req, reply) => {
       }
     }
 
-    let usdToNaira = usdBalance * res.data.exchange_rates[0].rate;
-    let totalOpeningBalance = ngnBalance + usdToNaira;
-
     payload = {
       naira: ngnBalance,
-      dollar: usdBalance,
-      rate: res.data.exchange_rates[0].rate,
-      amount: totalOpeningBalance,
+      dollar: usdBalance
     };
 
     await createOpeningBalance({ payload });
@@ -480,103 +493,6 @@ const createOpeningBalanceHandler = async (req, reply) => {
   }
 
   return reply.status(statusCode).send(result);
-};
-
-// update when you update exchange rate
-// update when you refresh
-const getOpeningBalance = async (
-  options,
-  forecastNumber,
-  forecastPeriod,
-  rate,
-  userId
-) => {
-  let date = moment();
-  // get start date of last 3 months
-  startDate = date
-    .clone()
-    .subtract(3, 'month')
-    .startOf('month')
-    .format('YYYY-MM-DD');
-  // get end date of last 3 months
-  endDate = date
-    .clone()
-    .subtract(3, 'month')
-    .endOf('month')
-    .format('YYYY-MM-DD');
-
-  let invoiceUrl = `${config.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${config.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`;
-
-  openingInvoice = await axios.get(invoiceUrl, options);
-
-  // get invoices for that month and sum it up
-  let billsUrl = `${config.ZOHO_BOOK_BASE_URL}/bills?organization_id=${config.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`;
-
-  openingBills = await axios.get(billsUrl, options);
-
-  let dollarOpeningInvoicesBalance = openingInvoice.data.invoices.reduce(
-    function (acc, obj) {
-      balance = obj.currency_code === 'USD' ? obj.balance : 0.0;
-
-      return acc + balance;
-    },
-    0
-  );
-
-  let nairaOpeningInvoicesBalance = openingInvoice.data.invoices.reduce(
-    function (acc, obj) {
-      balance = obj.currency_code === 'NGN' ? obj.balance : 0.0;
-
-      if (rate.old !== rate.latest) {
-        balance = (balance / rate.old) * rate.latest;
-      }
-
-      return acc + balance;
-    },
-    0
-  );
-
-  let dollarOpeningBillsBalance = openingBills.data.bills.reduce(function (
-    acc,
-    obj
-  ) {
-    balance = obj.currency_code === 'USD' ? obj.balance : 0.0;
-
-    return acc + balance;
-  },
-  0);
-
-  let nairaOpeningBillsBalance = openingBills.data.bills.reduce(function (
-    acc,
-    obj
-  ) {
-    balance = obj.currency_code === 'NGN' ? obj.balance : 0.0;
-
-    if (rate.old !== rate.latest) {
-      balance = (balance / rate.old) * rate.latest;
-    }
-
-    return acc + balance;
-  },
-  0);
-
-  // get bills for that month and sum it up
-  // invoice - bills = opening bal
-  let nairaOpeningBalance =
-    nairaOpeningInvoicesBalance - nairaOpeningBillsBalance;
-  let dollarOpeningBalance =
-    dollarOpeningInvoicesBalance - dollarOpeningBillsBalance;
-
-  let startingBalance = {
-    userId,
-    nairaOpeningBalance: nairaOpeningBalance,
-    dollarOpeningBalance: dollarOpeningBalance,
-    forecastType: `${forecastNumber} ${forecastPeriod}`,
-  };
-  // create this daily
-  await createInitialBalance({ startingBalance });
-
-  return startingBalance;
 };
 
 const generateReportHandler = async (req, reply) => {
@@ -635,6 +551,8 @@ const generateReportHandler = async (req, reply) => {
 
     let bills = await fetchAllBill({ payload });
 
+    let sales = await fetchAllSale({ payload });
+
     // Get initial opening balance for a particular user
     let initialOpeningBalance = await getInitialBalance({ payload });
 
@@ -666,13 +584,15 @@ const generateReportHandler = async (req, reply) => {
         });
       }
 
-      dollarOpening =
-        previousDayOpeningBalance.amount / previousDayOpeningBalance.rate;
-
       let startingBalance = {
         userId,
-        nairaOpeningBalance: dollarOpening * rate.latest,
-        dollarOpeningBalance: dollarOpening,
+        openingBalance:
+          parseFloat(previousDayOpeningBalance.naira) +
+          parseFloat(previousDayOpeningBalance.dollar) *
+            parseFloat(rate.latest).toFixed(2),
+        nairaOpeningBalance: parseFloat(previousDayOpeningBalance.naira),
+        dollarOpeningBalance: parseFloat(previousDayOpeningBalance.dollar),
+        rate: rate.latest,
         forecastType: `${forecastNumber} ${forecastPeriod}`,
       };
 
@@ -726,16 +646,14 @@ const generateReportHandler = async (req, reply) => {
     let month = check.format('MMMM');
 
     let closingBalances = [];
-    let nairaOpeningBalance = parseFloat(
-      initialOpeningBalance.nairaOpeningBalance
-    );
+    let nairaOpeningBalance = parseFloat(initialOpeningBalance.openingBalance);
     let dollarOpeningBalance = parseFloat(
       initialOpeningBalance.dollarOpeningBalance
     );
     let openingBalances = [
       {
         month: month,
-        amount: parseFloat(initialOpeningBalance.nairaOpeningBalance),
+        amount: parseFloat(initialOpeningBalance.openingBalance),
         currency: 'NGN',
         date: check,
       },
@@ -888,7 +806,7 @@ const generateReportHandler = async (req, reply) => {
       currencyRow.getCell(openingBalanceLength + 5).value = rate.latest;
 
       openingBalanceRow.getCell(openingBalanceLength + 2).value =
-        initialOpeningBalance.nairaOpeningBalance;
+        initialOpeningBalance.openingBalance;
       openingBalanceRow.getCell(openingBalanceLength + 3).value =
         initialOpeningBalance.dollarOpeningBalance;
 
@@ -925,6 +843,7 @@ const generateReportHandler = async (req, reply) => {
             }
 
             if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
+              rowX.getCell(i).value = inputData.naira;
               rowX.getCell(i + 1).value = inputData.balance;
             }
           }
@@ -1007,6 +926,7 @@ const generateReportHandler = async (req, reply) => {
             }
 
             if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
+              rowX.getCell(i).value = inputData.naira;
               rowX.getCell(i + 1).value = inputData.balance;
             }
           }
@@ -1082,7 +1002,7 @@ const generateReportHandler = async (req, reply) => {
 
       // nairaNetWorkingCapital
       let totalNairaNetWorkingCapital =
-        parseFloat(initialOpeningBalance.nairaOpeningBalance) +
+        parseFloat(initialOpeningBalance.openingBalance) +
         parseFloat(totalNairaClosingBalance) -
         parseFloat(totalNairaCashOutflows);
       // dollarNetWorkingCapital
@@ -1122,7 +1042,7 @@ const generateReportHandler = async (req, reply) => {
 
       // nairaNetWorkingCapital
       let totalNairaNetWorkingCapital =
-        parseFloat(initialOpeningBalance.nairaOpeningBalance) +
+        parseFloat(initialOpeningBalance.openingBalance) +
         parseFloat(totalNairaCashInflow) -
         parseFloat(totalNairaCashOutflow);
       // dollarNetWorkingCapital
@@ -1138,7 +1058,7 @@ const generateReportHandler = async (req, reply) => {
         data: {
           report: {
             openingBalance: {
-              naira: initialOpeningBalance.nairaOpeningBalance,
+              naira: initialOpeningBalance.openingBalance,
               dollar: initialOpeningBalance.dollarOpeningBalance,
             },
             totalCashInflow: {
@@ -1156,6 +1076,7 @@ const generateReportHandler = async (req, reply) => {
           },
           invoices: invoices.rows.reverse(),
           bills: bills.rows.reverse(),
+          sales: sales.rows.reverse(),
         },
       };
     }

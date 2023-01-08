@@ -1,5 +1,6 @@
 const tokenController = require('../controllers/handlers/token.handler');
 const zohoController = require('../controllers/handlers/zoho.handler');
+const forecastController = require('../controllers/handlers/forecast.handler');
 const exchangeController = require('../controllers/handlers/exchange.handler');
 const verifyToken = require('../controllers/auth/verifyToken');
 
@@ -19,6 +20,10 @@ const exchangeRateOpts = {
   handler: exchangeController.getExchangeRateHandler,
 };
 
+const exchangeRatesOpts = {
+  handler: exchangeController.getAllExchangeRateHandler,
+};
+
 const updateExchangeRateOpts = {
   handler: exchangeController.updateExchangeRateHandler,
 };
@@ -31,6 +36,14 @@ const salesOrderOpts = {
   handler: zohoController.salesOrderHandler,
 };
 
+const resyncForecastApplicationOpts = {
+  handler: forecastController.resyncHandler,
+};
+
+const fetchBankAccountsOpts = {
+  handler: forecastController.bankAccountsHandler,
+};
+
 const zohoRoutes = async (fastify, options) => {
   fastify.get('/zoho/opening/balance/create', createOpeningbalanceOpts);
 
@@ -40,7 +53,17 @@ const zohoRoutes = async (fastify, options) => {
 };
 
 const privateRoutes = async (fastify, options) => {
+  fastify.get('/zoho/bank/accounts', {
+    preHandler: fastify.auth([verifyToken]),
+    ...fetchBankAccountsOpts,
+  });
+
   // get exchange rate from zoho
+  fastify.get('/zoho/exchange/rate', {
+    preHandler: fastify.auth([verifyToken]),
+    ...exchangeRatesOpts,
+  });
+
   fastify.get('/zoho/exchange/rate/:number/:period', {
     preHandler: fastify.auth([verifyToken]),
     ...exchangeRateOpts,
@@ -73,6 +96,12 @@ const privateRoutes = async (fastify, options) => {
   fastify.get('/zoho/token/refresh', {
     preHandler: fastify.auth([verifyToken]),
     ...refreshZohoTokenOpts,
+  });
+
+  // resync application
+  fastify.delete('/zoho/forecast/resync', {
+    preHandler: fastify.auth([verifyToken]),
+    ...resyncForecastApplicationOpts,
   });
 };
 

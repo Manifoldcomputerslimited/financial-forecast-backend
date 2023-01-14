@@ -257,7 +257,7 @@ const getBill = async (
           vendorId: e.vendor_id,
           vendorName: e.vendor_name,
           status: e.status,
-          invoiceNumber: e.invoice_number,
+          invoiceNumber: e.bill_number,
           refrenceNumber: e.reference_number,
           date: e.date,
           dueDate: e.due_date,
@@ -470,16 +470,22 @@ const createOpeningBalanceHandler = async (req, reply) => {
 
     for (const [rowNum, inputData] of resp.data.bankaccounts.entries()) {
       // Save into databse
-      let bankAccounts = {
-        accountName: inputData.account_name,
-        accountType: inputData.account_type,
-        accountNumber: inputData.account_number,
-        bankName: inputData.bank_name,
-        currency: inputData.currency_code,
-        balance: inputData.balance,
-      };
+      if (
+        (inputData.currency_code === 'USD' ||
+          inputData.currency_code === 'NGN') &&
+        inputData.balance > 0
+      ) {
+        let bankAccounts = {
+          accountName: inputData.account_name,
+          accountType: inputData.account_type,
+          accountNumber: inputData.account_number,
+          bankName: inputData.bank_name,
+          currency: inputData.currency_code,
+          balance: inputData.balance,
+        };
 
-      await createBankAccounts({ bankAccounts });
+        await createBankAccounts({ bankAccounts });
+      }
 
       if (inputData.currency_code === 'USD') {
         usdBalance += inputData.balance;
@@ -505,7 +511,6 @@ const createOpeningBalanceHandler = async (req, reply) => {
       data: '',
     };
   } catch (e) {
-    console.log(e);
     statusCode = e.response.status;
     result = {
       status: false,
@@ -1102,7 +1107,6 @@ const generateReportHandler = async (req, reply) => {
       };
     }
   } catch (e) {
-    console.log(e);
     statusCode = e.response.status;
     result = {
       status: false,

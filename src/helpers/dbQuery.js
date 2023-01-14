@@ -4,7 +4,10 @@ const db = require('../models');
 const InvoiceForecast = db.invoiceForecasts;
 const SaleForecast = db.saleForecasts;
 const BillForecast = db.billForecasts;
+const ZohoRate = db.zohorates;
+
 const OpeningBalance = db.openingBalances;
+const BankAccount = db.bankAccounts;
 
 const Invoice = db.invoices;
 const Bill = db.bills;
@@ -147,7 +150,7 @@ const fetchAllInvoiceForecast = async ({ payload }) => {
 };
 
 const fetchAllBillForecast = async ({ payload }) => {
-  return BillForecast.findAndCountAll({
+  return await BillForecast.findAndCountAll({
     where: {
       userId: payload.userId,
       forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
@@ -160,7 +163,7 @@ const fetchAllBillForecast = async ({ payload }) => {
 };
 
 const fetchAllSaleForecast = async ({ payload }) => {
-  return SaleForecast.findAndCountAll({
+  return await SaleForecast.findAndCountAll({
     where: {
       userId: payload.userId,
       forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
@@ -180,6 +183,10 @@ const createOpeningBalance = async ({ payload }) => {
   return await OpeningBalance.create(payload);
 };
 
+const createBankAccounts = async ({ bankAccounts }) => {
+  return await BankAccount.create(bankAccounts);
+};
+
 const getPreviousDayOpeningBalance = async ({ prevOpeningBalData }) => {
   return await OpeningBalance.findOne({
     where: {
@@ -191,7 +198,12 @@ const getPreviousDayOpeningBalance = async ({ prevOpeningBalData }) => {
   });
 };
 
+const createZohoRate = async ({ payload }) => {
+  return await ZohoRate.create(payload);
+};
+
 module.exports = {
+  createZohoRate,
   createInvoiceForecast,
   createInvoice,
   createBillForecast,
@@ -207,5 +219,6 @@ module.exports = {
   fetchAllSaleForecast,
   createInitialBalance,
   createOpeningBalance,
+  createBankAccounts,
   getPreviousDayOpeningBalance,
 };

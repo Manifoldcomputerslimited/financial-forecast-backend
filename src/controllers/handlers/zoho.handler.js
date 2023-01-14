@@ -5,6 +5,7 @@ let moment = require('moment');
 
 const { getZohoExchangeRateHandler } = require('./exchange.handler');
 const {
+  createZohoRate,
   createInvoiceForecast,
   createInvoice,
   createBill,
@@ -21,6 +22,7 @@ const {
   fetchAllSale,
   createOpeningBalance,
   getPreviousDayOpeningBalance,
+  createBankAccounts,
 } = require('../../helpers/dbQuery');
 const { saleForecasts } = require('../../models');
 moment().format();
@@ -255,7 +257,7 @@ const getBill = async (
           vendorId: e.vendor_id,
           vendorName: e.vendor_name,
           status: e.status,
-          invoiceNumber: e.invoice_number,
+          invoiceNumber: e.bill_number,
           refrenceNumber: e.reference_number,
           date: e.date,
           dueDate: e.due_date,
@@ -446,6 +448,12 @@ const createOpeningBalanceHandler = async (req, reply) => {
         message: 'Could not fetch exchange rate',
       });
 
+    payload = {
+      rate: res.data.exchange_rates[0].rate,
+    };
+
+    await createZohoRate({ payload });
+
     // fetch all bank accounts details
     let bankAccountUrl = `${config.ZOHO_BOOK_BASE_URL}/bankaccounts?organization_id=${config.ORGANIZATION_ID}`;
 
@@ -461,6 +469,24 @@ const createOpeningBalanceHandler = async (req, reply) => {
     let usdBalance = 0;
 
     for (const [rowNum, inputData] of resp.data.bankaccounts.entries()) {
+      // Save into databse
+      if (
+        (inputData.currency_code === 'USD' ||
+          inputData.currency_code === 'NGN') &&
+        inputData.balance > 0
+      ) {
+        let bankAccounts = {
+          accountName: inputData.account_name,
+          accountType: inputData.account_type,
+          accountNumber: inputData.account_number,
+          bankName: inputData.bank_name,
+          currency: inputData.currency_code,
+          balance: inputData.balance,
+        };
+
+        await createBankAccounts({ bankAccounts });
+      }
+
       if (inputData.currency_code === 'USD') {
         usdBalance += inputData.balance;
       }
@@ -472,7 +498,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
 
     payload = {
       naira: ngnBalance,
-      dollar: usdBalance
+      dollar: usdBalance,
     };
 
     await createOpeningBalance({ payload });

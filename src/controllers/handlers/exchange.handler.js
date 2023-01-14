@@ -8,6 +8,7 @@ const Rate = db.rates;
 const BillForecast = db.billForecasts;
 const InvoiceForecast = db.invoiceForecasts;
 const Invoice = db.invoices;
+const ZohoRate = db.zohorates;
 const Bill = db.bills;
 const InitialBalance = db.initialBalances;
 
@@ -97,6 +98,31 @@ const getExchangeRateHandler = async (req, reply) => {
       status: true,
       message: 'Exchange rate fetched successfully',
       data: rate,
+    };
+  } catch (e) {
+    statusCode = e.code;
+    result = {
+      status: false,
+      message: e.message,
+    };
+  }
+
+  return reply.status(statusCode).send(result);
+};
+
+const getAllExchangeRateHandler = async (req, reply) => {
+  try {
+    const zohorates = await ZohoRate.findAll({
+      limit: 30,
+      order: [['createdAt', 'DESC']],
+    });
+
+    statusCode = 200;
+
+    result = {
+      status: true,
+      message: 'Exchage rates fetched successfully',
+      data: zohorates,
     };
   } catch (e) {
     statusCode = e.code;
@@ -213,6 +239,7 @@ const updateExchangeRateHandler = async (req, reply) => {
 
 module.exports = {
   getExchangeRateHandler,
+  getAllExchangeRateHandler,
   getZohoExchangeRateHandler,
   updateExchangeRateHandler,
 };

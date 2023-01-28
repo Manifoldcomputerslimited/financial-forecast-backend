@@ -814,15 +814,15 @@ const generateReportHandler = async (req, reply) => {
       cashInflow.getCell(1).value = 'CASH INFLOWS';
 
       for (const [rowNum, inputData] of openingBalances.entries()) {
-        monthRow.getCell(rowNum + 2).value = inputData.month;
-        currencyRow.getCell(rowNum + 2).value = inputData.currency;
-        openingBalanceRow.getCell(rowNum + 2).value = inputData.amount;
+        monthRow.getCell(rowNum + 3).value = inputData.month;
+        currencyRow.getCell(rowNum + 3).value = inputData.currency;
+        openingBalanceRow.getCell(rowNum + 3).value = inputData.amount;
 
         monthRow.commit();
         currencyRow.commit();
         openingBalanceRow.commit();
       }
-      let openingBalanceLength = openingBalances.length;
+      let openingBalanceLength = openingBalances.length + 1;
       monthRow.getCell(openingBalanceLength + 2).value = 'Total';
       monthRow.getCell(openingBalanceLength + 3).value = 'Total';
       monthRow.getCell(openingBalanceLength + 5).value = 'Rate';
@@ -865,18 +865,19 @@ const generateReportHandler = async (req, reply) => {
               invoiceForecasts.rows[i - 1].currency.toLowerCase()
           ) {
             if (inputData.currencyCode.toLowerCase() === 'NGN'.toLowerCase()) {
-              rowX.getCell(i + 1).value = inputData.balance;
+              rowX.getCell(i + 2).value = inputData.balance;
             }
 
             if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
-              rowX.getCell(i).value = inputData.naira;
-              rowX.getCell(i + 1).value = inputData.balance;
+              rowX.getCell(i + 1).value = inputData.naira;
+              rowX.getCell(i + 2).value = inputData.balance;
             }
           }
         }
 
         sheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
           rowX.getCell(1).value = inputData.customerName;
+          rowX.getCell(2).value = inputData.invoiceNumber;
         });
 
         rowX.commit();
@@ -897,17 +898,17 @@ const generateReportHandler = async (req, reply) => {
           totalNairaClosingBalance =
             totalNairaClosingBalance +
             parseFloat(inputData.nairaClosingBalance);
-          cashInflowFromInvoiced.getCell(rowNum + 2).value =
+          cashInflowFromInvoiced.getCell(rowNum + 3).value =
             inputData.nairaClosingBalance;
-          totalCashInflowFromOperatingActivities.getCell(rowNum + 2).value =
+          totalCashInflowFromOperatingActivities.getCell(rowNum + 3).value =
             inputData.nairaClosingBalance;
         } else {
           totalDollarClosingBalance =
             totalDollarClosingBalance +
             parseFloat(inputData.dollarClosingBalance);
-          cashInflowFromInvoiced.getCell(rowNum + 2).value =
+          cashInflowFromInvoiced.getCell(rowNum + 3).value =
             inputData.dollarClosingBalance;
-          totalCashInflowFromOperatingActivities.getCell(rowNum + 2).value =
+          totalCashInflowFromOperatingActivities.getCell(rowNum + 3).value =
             inputData.dollarClosingBalance;
         }
 
@@ -948,18 +949,19 @@ const generateReportHandler = async (req, reply) => {
               invoiceForecasts.rows[i - 1].currency.toLowerCase()
           ) {
             if (inputData.currencyCode.toLowerCase() === 'NGN'.toLowerCase()) {
-              rowX.getCell(i + 1).value = inputData.balance;
+              rowX.getCell(i + 2).value = inputData.balance;
             }
 
             if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
-              rowX.getCell(i).value = inputData.naira;
-              rowX.getCell(i + 1).value = inputData.balance;
+              rowX.getCell(i + 1).value = inputData.naira;
+              rowX.getCell(i + 2).value = inputData.balance;
             }
           }
         }
 
         sheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
           rowX.getCell(1).value = inputData.vendorName;
+          rowX.getCell(2).value = inputData.refrenceNumber;
         });
 
         rowX.commit();
@@ -983,18 +985,18 @@ const generateReportHandler = async (req, reply) => {
             inputData.nairaClosingBalance
           );
           totalNairaCashOutflows += parseFloat(inputData.nairaClosingBalance);
-          cashOutflowsOnCurrentTradePayables.getCell(rowNum + 2).value =
+          cashOutflowsOnCurrentTradePayables.getCell(rowNum + 3).value =
             inputData.nairaClosingBalance;
-          totalCashOutflows.getCell(rowNum + 2).value =
+          totalCashOutflows.getCell(rowNum + 3).value =
             inputData.nairaClosingBalance;
         } else {
           totalDollarCashOutflowsOnCurrentTradePayables += parseFloat(
             inputData.dollarClosingBalance
           );
           totalDollarCashOutflows += parseFloat(inputData.dollarClosingBalance);
-          cashOutflowsOnCurrentTradePayables.getCell(rowNum + 2).value =
+          cashOutflowsOnCurrentTradePayables.getCell(rowNum + 3).value =
             inputData.dollarClosingBalance;
-          totalCashOutflows.getCell(rowNum + 2).value =
+          totalCashOutflows.getCell(rowNum + 3).value =
             inputData.dollarClosingBalance;
         }
 
@@ -1003,9 +1005,9 @@ const generateReportHandler = async (req, reply) => {
 
       let billForecastsLength = billForecasts.rows.length;
       cashOutflowsOnCurrentTradePayables.getCell(
-        billForecastsLength + 2
+        billForecastsLength + 3
       ).value = totalNairaCashOutflowsOnCurrentTradePayables;
-      totalCashOutflows.getCell(billForecastsLength + 2).value =
+      totalCashOutflows.getCell(billForecastsLength + 3).value =
         totalNairaCashOutflows;
 
       cashOutflowsOnCurrentTradePayables.getCell(
@@ -1021,7 +1023,7 @@ const generateReportHandler = async (req, reply) => {
       const closingBalanceRow = netWorkingCapital;
 
       for (const [rowNum, inputData] of closingBalances.entries()) {
-        closingBalanceRow.getCell(rowNum + 2).value = inputData.amount;
+        closingBalanceRow.getCell(rowNum + 3).value = inputData.amount;
 
         closingBalanceRow.commit();
       }

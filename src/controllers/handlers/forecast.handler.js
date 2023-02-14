@@ -704,6 +704,27 @@ const deleteOverdraftHandler = async (req, reply) => {
   return reply.status(statusCode).send(result);
 };
 
+const getOverdraftHandler = async (req, reply) => {
+  try {
+    let overdrafts = await Overdraft.findAll();
+
+    statusCode = 200;
+
+    result = {
+      status: true,
+      message: 'Overdrafts retrieved successfully',
+      data: overdrafts,
+    };
+  } catch (e) {
+    statusCode = e.code;
+    result = {
+      status: false,
+      message: e.message,
+    };
+  }
+  return reply.status(statusCode).send(result);
+};
+
 module.exports = {
   resyncHandler,
   bankAccountsHandler,
@@ -711,4 +732,5 @@ module.exports = {
   createOverdraftHandler,
   updateOverdraftHandler,
   deleteOverdraftHandler,
+  getOverdraftHandler,
 };

@@ -52,6 +52,10 @@ const updateOverdraftOpts = {
   handler: forecastController.updateOverdraftHandler,
 };
 
+const getOverdraftsOpts = {
+  handler: forecastController.getOverdraftHandler,
+};
+
 const deleteOverdraftOpts = {
   handler: forecastController.deleteOverdraftHandler,
 };
@@ -81,6 +85,11 @@ const privateRoutes = async (fastify, options) => {
   fastify.delete('/zoho/overdraft/:id', {
     preHandler: fastify.auth([verifyToken]),
     ...deleteOverdraftOpts,
+  });
+
+  fastify.get('/zoho/overdraft', {
+    preHandler: fastify.auth([verifyToken]),
+    ...getOverdraftsOpts,
   });
 
   fastify.get('/zoho/bank/accounts', {

@@ -666,25 +666,43 @@ const deleteOverdraftHandler = async (req, reply) => {
       overdraftBalance: bankAccount.dataValues.balance,
     });
 
-    let naira;
-    let dollar;
-    let balance =
-      parseFloat(bankAccount.dataValues.balance) + parseFloat(amount);
+    if (!bankAccount)
+      return reply.code(500).send({
+        status: false,
+        message: 'Unable to update bank account',
+      });
+    let res = await BankAccount.findAll({
+      where: {
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
 
-    if (bankAccount.dataValues.currency === 'NGN') {
-      naira = parseFloat(openingBalance.dataValues.naira) - balance;
-      dollar = openingBalance.dataValues.dollar;
-    }
+    let ngnBalance = 0;
+    let usdBalance = 0;
 
-    if (bankAccount.dataValues.currency === 'USD') {
-      naira = openingBalance.dataValues.naira;
-      dollar = parseFloat(openingBalance.dataValues.dollar) - balance;
-    }
+    res.map(async function (res) {
+      if (res.dataValues.currency === 'USD') {
+        console.log(res.dataValues.overdraftBalance);
+        usdBalance += parseFloat(res.dataValues.overdraftBalance);
+      }
+      if (res.dataValues.currency === 'NGN') {
+        ngnBalance += parseFloat(res.dataValues.overdraftBalance);
+      }
+    });
 
     openingBalance = await openingBalance.update({
-      dollar,
-      naira,
+      dollar: usdBalance,
+      naira: ngnBalance,
     });
+
+    if (!openingBalance)
+      return reply.code(500).send({
+        status: false,
+        message: 'Unable to update opening balance',
+      });
 
     statusCode = 200;
 

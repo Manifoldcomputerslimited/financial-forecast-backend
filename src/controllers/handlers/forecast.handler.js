@@ -1,6 +1,15 @@
+const { default: axios } = require('axios');
 const db = require('../../models');
 const { Op } = require('sequelize');
 let moment = require('moment');
+const config = require('../../../config');
+const {
+  createZohoRate,
+  createOpeningBalance,
+  createBankAccounts,
+  getPreviousDayOpeningBalance,
+} = require('../../helpers/dbQuery');
+
 const InvoiceForecast = db.invoiceForecasts;
 const SaleForecast = db.saleForecasts;
 const BillForecast = db.billForecasts;
@@ -10,11 +19,17 @@ const Bill = db.bills;
 const InitialBalance = db.initialBalances;
 const BankAccount = db.bankAccounts;
 const Rate = db.rates;
+const Overdraft = db.overdrafts;
+const OpeningBalance = db.openingBalances;
+
+const TODAY_START = moment().startOf('day').format();
+const TODAY_END = moment().endOf('day').format();
+
+const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
+const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
 
 const resyncHandler = async (req, reply) => {
   try {
-    const TODAY_START = new Date().setHours(0, 0, 0, 0);
-    const TODAY_END = new Date().setHours(23, 59, 59, 999);
     const userId = req.user.id;
 
     await InitialBalance.destroy({
@@ -116,12 +131,6 @@ const resyncHandler = async (req, reply) => {
 
 const bankAccountsHandler = async (req, reply) => {
   try {
-    const YESTERDAY_START = moment()
-      .subtract(1, 'days')
-      .startOf('day')
-      .format();
-    const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
-
     let bankAccounts = await BankAccount.findAll({
       where: {
         createdAt: {
@@ -139,7 +148,6 @@ const bankAccountsHandler = async (req, reply) => {
       data: bankAccounts,
     };
   } catch (e) {
-    console.log(e);
     statusCode = e.code;
     result = {
       status: false,
@@ -150,7 +158,556 @@ const bankAccountsHandler = async (req, reply) => {
   return reply.status(statusCode).send(result);
 };
 
+// This function will be executed by a CRON JOB daily
+// stores todays exchange rate and opening in the database
+const createOpeningBalanceHandler = async (req, reply) => {
+  try {
+    let prevOpeningBalData = {
+      yesterday_start: TODAY_START,
+      yesterday_end: TODAY_END,
+    };
+    // check if opening balance has been updated today.
+    const openingBalance = await getPreviousDayOpeningBalance({
+      prevOpeningBalData,
+    });
+
+    if (openingBalance) {
+      return reply.code(400).send({
+        status: false,
+        message: 'Opening Balance Already Exists',
+      });
+    }
+
+    // get zoho access token
+    url = `${config.ZOHO_BASE_URL}?refresh_token=${config.ZOHO_REFRESH_TOKEN}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
+
+    zoho = await axios.post(url);
+
+    if (zoho.data.error) {
+      return reply.code(400).send({
+        status: false,
+        message: 'Invalid code',
+      });
+    }
+
+    const options = {
+      headers: {
+        'Content-Type': ['application/json'],
+        Authorization: 'Bearer ' + zoho.data.access_token,
+      },
+    };
+
+    // get current exchange rate from zoho
+    let rateUrl = `${config.ZOHO_BOOK_BASE_URL}/settings/currencies/${config.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${config.ORGANIZATION_ID}`;
+
+    res = await axios.get(rateUrl, options);
+
+    if (res.data.error)
+      return reply.code(400).send({
+        status: false,
+        message: 'Could not fetch exchange rate',
+      });
+
+    payload = {
+      rate: res.data.exchange_rates[0].rate,
+    };
+
+    await createZohoRate({ payload });
+
+    // fetch all bank accounts details
+    let bankAccountUrl = `${config.ZOHO_BOOK_BASE_URL}/bankaccounts?organization_id=${config.ORGANIZATION_ID}`;
+
+    resp = await axios.get(bankAccountUrl, options);
+
+    if (resp.data.error)
+      return reply.code(400).send({
+        status: false,
+        message: 'Could not fetch bank accounts',
+      });
+
+    let ngnBalance = 0;
+    let usdBalance = 0;
+    let overdraft;
+
+    for (const [rowNum, inputData] of resp.data.bankaccounts.entries()) {
+      // Save into databse
+      if (
+        inputData.currency_code === 'USD' ||
+        inputData.currency_code === 'NGN'
+      ) {
+        overdraft = inputData.balance;
+        // if bank balance is less than zero then check if there is an overdraft account loan
+        if (inputData.balance < 0) {
+          overdraftExits = await Overdraft.findOne({
+            where: { accountId: inputData.account_id },
+          });
+
+          if (overdraftExits) {
+            overdraft =
+              parseFloat(inputData.balance) +
+              parseFloat(overdraftExits.dataValues.amount);
+          }
+        }
+
+        let bankAccounts = {
+          accountId: inputData.account_id,
+          accountName: inputData.account_name,
+          accountType: inputData.account_type,
+          accountNumber: inputData.account_number,
+          bankName: inputData.bank_name,
+          currency: inputData.currency_code,
+          balance: inputData.balance,
+          overdraftBalance: overdraft,
+        };
+
+        if (inputData.currency_code === 'USD') {
+          usdBalance += overdraft;
+        }
+
+        if (inputData.currency_code === 'NGN') {
+          ngnBalance += overdraft;
+        }
+
+        await createBankAccounts({ bankAccounts });
+      }
+    }
+
+    payload = {
+      naira: ngnBalance,
+      dollar: usdBalance,
+    };
+
+    await createOpeningBalance({ payload });
+
+    statusCode = 200;
+
+    result = {
+      status: true,
+      message: 'Successfully',
+      data: '',
+    };
+  } catch (e) {
+    statusCode = e.response.status;
+    result = {
+      status: false,
+      message: e.response.data.message,
+    };
+  }
+
+  return reply.status(statusCode).send(result);
+};
+
+const createOverdraftHandler = async (req, reply) => {
+  const {
+    accountId,
+    accountName,
+    accountType,
+    accountNumber,
+    bankName,
+    currency,
+    amount,
+  } = req.body;
+  try {
+    let overdraft;
+    let bankAccount;
+    let openingBalance;
+    let bankBalance;
+
+    let overdraftExists = await Overdraft.findOne({
+      where: { accountId },
+    });
+
+    if (overdraftExists)
+      return reply.code(409).send({
+        status: false,
+        message: 'Overdraft account already exist',
+      });
+
+    bankAccount = await BankAccount.findOne({
+      where: {
+        accountId,
+        currency,
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
+
+    if (!bankAccount)
+      return reply.code(404).send({
+        status: false,
+        message: 'Bank account not found',
+      });
+
+    if (bankAccount && bankAccount.dataValues.balance > 0)
+      return reply.code(400).send({
+        status: false,
+        message: 'Bank account balance is greater than 0',
+      });
+
+    overdraft = await Overdraft.create({
+      accountId,
+      accountName,
+      accountType,
+      accountNumber,
+      bankName,
+      currency,
+      amount,
+    });
+
+    if (!overdraft)
+      return reply.code(500).send({
+        status: false,
+        message: 'Unable to create overdraft account',
+      });
+
+    if (bankAccount.currency !== currency)
+      return reply.code(400).send({
+        status: false,
+        message: 'Curreny mismtach',
+      });
+
+    bankBalance = parseFloat(bankAccount.dataValues.balance);
+    let overdraftBalance = parseFloat(amount) + parseFloat(bankBalance);
+
+    // update opening balance
+    openingBalance = await OpeningBalance.findOne({
+      where: {
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
+
+    //update bankAccount
+    bankAccount = await bankAccount.update({
+      overdraftBalance: overdraftBalance,
+    });
+
+    if (!bankAccount)
+      return reply.code(500).send({
+        status: false,
+        message: 'Unable to update bank account',
+      });
+
+    let res = await BankAccount.findAll({
+      where: {
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
+
+    let ngnBalance = 0;
+    let usdBalance = 0;
+
+    res.map(async function (res) {
+      if (res.dataValues.currency === 'USD') {
+        console.log(res.dataValues.overdraftBalance);
+        usdBalance += parseFloat(res.dataValues.overdraftBalance);
+      }
+      if (res.dataValues.currency === 'NGN') {
+        ngnBalance += parseFloat(res.dataValues.overdraftBalance);
+      }
+    });
+
+    openingBalance = await openingBalance.update({
+      dollar: usdBalance,
+      naira: ngnBalance,
+    });
+
+    if (!openingBalance)
+      return reply.code(500).send({
+        status: false,
+        message: 'Unable to update opening balance',
+      });
+
+    console.log('got ot the end');
+
+    statusCode = 201;
+
+    result = {
+      status: true,
+      message: 'Overdraft account created successfully',
+    };
+    console.log(result);
+  } catch (e) {
+    console.log(e);
+    statusCode = e.response.status;
+    result = {
+      status: false,
+      message: e.response.data.message,
+    };
+  }
+  return reply.status(statusCode).send(result);
+};
+
+const updateOverdraftHandler = async (req, reply) => {
+  const id = req.params.id;
+  const { amount } = req.body;
+
+  try {
+    let openingBalance;
+
+    let overdraft = await Overdraft.findOne({
+      where: { accountId: id },
+    });
+
+    if (!overdraft)
+      return reply.code(500).send({
+        status: false,
+        message: 'Overdraft account not found',
+      });
+
+    let bankAccount = await BankAccount.findOne({
+      where: {
+        accountId: overdraft.accountId,
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
+
+    if (!bankAccount)
+      return reply.code(404).send({
+        status: false,
+        message: 'Bank account not found',
+      });
+
+    // update opening balance
+    openingBalance = await OpeningBalance.findOne({
+      where: {
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
+
+    if (!openingBalance)
+      return reply.code(404).send({
+        status: false,
+        message: 'Opening Balance not found',
+      });
+
+    let overdraftDiff;
+
+    if (parseFloat(amount) > parseFloat(overdraft.dataValues.amount)) {
+      console.log('greater');
+      overdraftDiff =
+        parseFloat(amount) - parseFloat(overdraft.dataValues.amount);
+
+      overdraftBalance =
+        parseFloat(bankAccount.dataValues.overdraftBalance) +
+        parseFloat(overdraftDiff);
+
+      console.log(overdraftDiff);
+      console.log('amount', overdraft.dataValues.amount);
+
+      console.log('bank', bankAccount.dataValues.overdraftBalance);
+      console.log(overdraftBalance);
+
+      if (bankAccount.dataValues.currency === 'NGN') {
+        dollar = openingBalance.dataValues.dollar;
+        naira =
+          parseFloat(openingBalance.dataValues.naira) +
+          parseFloat(overdraftDiff);
+      }
+
+      if (bankAccount.dataValues.currency === 'USD') {
+        naira = openingBalance.dataValues.naira;
+        dollar =
+          parseFloat(openingBalance.dataValues.dollar) +
+          parseFloat(overdraftDiff);
+        console.log('dollar', openingBalance.dataValues.dollar);
+      }
+
+      bankAccount = await bankAccount.update({
+        overdraftBalance: overdraftBalance,
+      });
+
+      openingBalance = await openingBalance.update({
+        dollar,
+        naira,
+      });
+    } else {
+      console.log('less than');
+      overdraftDiff =
+        parseFloat(amount) - parseFloat(overdraft.dataValues.amount);
+
+      overdraftBalance =
+        parseFloat(bankAccount.dataValues.overdraftBalance) +
+        parseFloat(overdraftDiff);
+
+      bankAccount = await bankAccount.update({
+        overdraftBalance: overdraftBalance,
+      });
+
+      if (!bankAccount)
+        return reply.code(500).send({
+          status: false,
+          message: 'Unable to update bank account',
+        });
+
+      let result = await BankAccount.findAll({
+        where: {
+          createdAt: {
+            [Op.gt]: YESTERDAY_START,
+            [Op.lt]: YESTERDAY_END,
+          },
+        },
+      });
+
+      let ngnBalance = 0;
+      let usdBalance = 0;
+
+      result.map(async function (result) {
+        if (result.dataValues.currency === 'USD') {
+          console.log(result.dataValues.overdraftBalance);
+          usdBalance += parseFloat(result.dataValues.overdraftBalance);
+        }
+        if (result.dataValues.currency === 'NGN') {
+          ngnBalance += parseFloat(result.dataValues.overdraftBalance);
+        }
+      });
+
+      openingBalance = await openingBalance.update({
+        dollar: usdBalance,
+        naira: ngnBalance,
+      });
+    }
+
+    overdraft = await overdraft.update({
+      amount: amount,
+    });
+
+    if (!overdraft)
+      return reply.code(500).send({
+        status: false,
+        message: 'Unable to update overdraft',
+      });
+
+    if (!openingBalance)
+      return reply.code(500).send({
+        status: false,
+        message: 'Unable to update opening balance',
+      });
+
+    statusCode = 200;
+
+    result = {
+      status: true,
+      message: 'Overdraft account updated successfully',
+    };
+  } catch (e) {
+    statusCode = e.code;
+    result = {
+      status: false,
+      message: e.message,
+    };
+  }
+  return reply.status(statusCode).send(result);
+};
+
+const deleteOverdraftHandler = async (req, reply) => {
+  const id = req.params.id;
+
+  try {
+    let overdraft = await Overdraft.findOne({
+      where: { accountId: id },
+    });
+
+    if (!overdraft)
+      return reply.code(500).send({
+        status: false,
+        message: 'Overdraft account not found',
+      });
+
+    let bankAccount = await BankAccount.findOne({
+      where: {
+        accountId: overdraft.accountId,
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
+
+    if (!bankAccount)
+      return reply.code(404).send({
+        status: false,
+        message: 'Bank account not found',
+      });
+
+    let openingBalance = await OpeningBalance.findOne({
+      where: {
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
+
+    if (!openingBalance)
+      return reply.code(404).send({
+        status: false,
+        message: 'Opening Balance not found',
+      });
+
+    let amount = parseFloat(overdraft.dataValues.amount);
+
+    await overdraft.destroy();
+
+    bankAccount = await bankAccount.update({
+      overdraftBalance: bankAccount.dataValues.balance,
+    });
+
+    let naira;
+    let dollar;
+    let balance =
+      parseFloat(bankAccount.dataValues.balance) + parseFloat(amount);
+
+    if (bankAccount.dataValues.currency === 'NGN') {
+      naira = parseFloat(openingBalance.dataValues.naira) - balance;
+      dollar = openingBalance.dataValues.dollar;
+    }
+
+    if (bankAccount.dataValues.currency === 'USD') {
+      naira = openingBalance.dataValues.naira;
+      dollar = parseFloat(openingBalance.dataValues.dollar) - balance;
+    }
+
+    openingBalance = await openingBalance.update({
+      dollar,
+      naira,
+    });
+
+    statusCode = 200;
+
+    result = {
+      status: true,
+      message: 'Overdraft deleted successfully',
+    };
+  } catch (e) {
+    console.log(e);
+    statusCode = e.code;
+    result = {
+      status: false,
+      message: e.message,
+    };
+  }
+  return reply.status(statusCode).send(result);
+};
+
 module.exports = {
   resyncHandler,
   bankAccountsHandler,
+  createOpeningBalanceHandler,
+  createOverdraftHandler,
+  updateOverdraftHandler,
+  deleteOverdraftHandler,
 };

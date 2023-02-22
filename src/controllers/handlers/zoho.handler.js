@@ -684,7 +684,7 @@ const generateReportHandler = async (req, reply) => {
       parseFloat(nairaLastOpeningBalance.amount) +
       parseFloat(nairaLastInvoice.nairaClosingBalance) -
       parseFloat(nairaLastBill.nairaClosingBalance);
-    
+
     // then push to closing Balance
     closingBalances.push({
       month: closingBalMonth,
@@ -1075,5 +1075,5 @@ const salesOrderHandler = async (req, reply) => {
 
 module.exports = {
   generateReportHandler,
-  salesOrderHandler
+  salesOrderHandler,
 };

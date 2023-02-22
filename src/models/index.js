@@ -48,7 +48,7 @@ db.tokens.belongsTo(db.users, { foreignKey: 'userId' });
 db.users.hasMany(db.tokens, { foreignKey: 'userId' });
 
 sequelize
-  .sync({ alter: true })
+  .sync({ force: false, alter: true })
   .then(async () => {
     // await db.roles.create({
     //   name: "Admin",

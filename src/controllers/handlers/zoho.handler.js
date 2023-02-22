@@ -5,7 +5,6 @@ let moment = require('moment');
 
 const { getZohoExchangeRateHandler } = require('./exchange.handler');
 const {
-  createZohoRate,
   createInvoiceForecast,
   createInvoice,
   createBill,
@@ -20,9 +19,7 @@ const {
   fetchAllInvoice,
   fetchAllBill,
   fetchAllSale,
-  createOpeningBalance,
   getPreviousDayOpeningBalance,
-  createBankAccounts,
 } = require('../../helpers/dbQuery');
 const { saleForecasts } = require('../../models');
 moment().format();
@@ -39,7 +36,6 @@ const getInvoice = async (
   let endDate;
 
   // monthly / yearly forecast
-  // TODO::: rework this... only fetch start date and end date. should not be a loop.
   //TODO:: rework to fetch data by date...
   startDate = date
     .clone()
@@ -51,10 +47,49 @@ const getInvoice = async (
     .add(forecastNumber - 1, forecastPeriod)
     .endOf(forecastPeriod)
     .format('YYYY-MM-DD');
-  // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
-  let url = `${config.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${config.ORGANIZATION_ID}&due_date_start=${startDate}&due_date_end=${endDate}&sort_column=due_date`;
 
-  resp = await axios.get(url, options);
+  let filteredInvoices = [];
+  let i = 1;
+
+  do {
+    let url = `${config.ZOHO_BOOK_BASE_URL}/invoices?organization_id=${config.ORGANIZATION_ID}&due_date_end=${endDate}&sort_column=due_date&page=${i}`;
+
+    resp = await axios.get(url, options);
+
+    if (Array.isArray(resp.data.invoices) && resp.data.invoices.length > 0) {
+      const filteredPreviousInvoices = resp.data.invoices.filter(
+        (item, index) =>
+          item.due_date < startDate &&
+          (item.status == 'sent' ||
+            item.status == 'overdue' ||
+            item.status == 'partially_paid' ||
+            item.status == 'unpaid')
+      );
+
+      const filteredCurrentInvoices = resp.data.invoices.filter(
+        (item, index) =>
+          item.due_date >= startDate &&
+          item.due_date <= endDate &&
+          (item.status == 'sent' ||
+            item.status == 'overdue' ||
+            item.status == 'partially_paid' ||
+            item.status == 'unpaid')
+      );
+
+      filteredPreviousInvoices.reduce(async function (a, e) {
+        e.due_date = startDate;
+        filteredInvoices.push(e);
+        return e;
+      }, 0);
+
+      filteredCurrentInvoices.reduce(async function (a, e) {
+        filteredInvoices.push(e);
+        return e;
+      }, 0);
+    }
+
+    ++i;
+  } while (!resp.data.invoices.length);
 
   for (i = 0; i < forecastNumber; i++) {
     startDate = date
@@ -68,7 +103,7 @@ const getInvoice = async (
       .endOf(forecastPeriod)
       .format('YYYY-MM-DD');
 
-    const filteredInvoices = resp.data.invoices.filter(
+    let newFilteredInvoices = filteredInvoices.filter(
       (item, index) =>
         item.due_date >= startDate &&
         item.due_date <= endDate &&
@@ -78,13 +113,13 @@ const getInvoice = async (
           item.status == 'unpaid')
     );
 
-    dollarClosingBalance = filteredInvoices.reduce(function (acc, obj) {
+    dollarClosingBalance = newFilteredInvoices.reduce(function (acc, obj) {
       balance = obj.currency_code === 'USD' ? obj.balance : 0.0;
 
       return acc + balance;
     }, 0);
 
-    nairaClosingBalance = filteredInvoices.reduce(function (acc, obj) {
+    nairaClosingBalance = newFilteredInvoices.reduce(function (acc, obj) {
       balance =
         obj.currency_code === 'NGN'
           ? obj.balance
@@ -119,8 +154,11 @@ const getInvoice = async (
       'USD'
     );
 
-    filteredInvoices.reduce(async function (a, e) {
-      if (parseFloat(e.balance) > 0) {
+    newFilteredInvoices.reduce(async function (a, e) {
+      if (
+        parseFloat(e.balance) > 0 &&
+        (e.due_date >= startDate || e.due_date <= endDate)
+      ) {
         if (
           parseFloat(rate.old).toFixed(2) !==
             parseFloat(rate.latest).toFixed(2) &&
@@ -395,132 +433,6 @@ const getSalesOrder = async (
   }
 };
 
-// This function will be executed by a CRON JOB daily
-// stores todays exchange rate and opening in the database
-const createOpeningBalanceHandler = async (req, reply) => {
-  try {
-    const TODAY_START = moment().startOf('day').format();
-    const TODAY_END = moment().endOf('day').format();
-
-    let prevOpeningBalData = {
-      yesterday_start: TODAY_START,
-      yesterday_end: TODAY_END,
-    };
-    // check if opening balance has been updated today.
-    const openingBalance = await getPreviousDayOpeningBalance({
-      prevOpeningBalData,
-    });
-
-    if (openingBalance) {
-      return reply.code(400).send({
-        status: false,
-        message: 'Opening Balance Already Exists',
-      });
-    }
-
-    // get zoho access token
-    url = `${config.ZOHO_BASE_URL}?refresh_token=${config.ZOHO_REFRESH_TOKEN}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
-
-    zoho = await axios.post(url);
-
-    if (zoho.data.error) {
-      return reply.code(400).send({
-        status: false,
-        message: 'Invalid code',
-      });
-    }
-
-    const options = {
-      headers: {
-        'Content-Type': ['application/json'],
-        Authorization: 'Bearer ' + zoho.data.access_token,
-      },
-    };
-
-    // get current exchange rate from zoho
-    let rateUrl = `${config.ZOHO_BOOK_BASE_URL}/settings/currencies/${config.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${config.ORGANIZATION_ID}`;
-
-    res = await axios.get(rateUrl, options);
-
-    if (res.data.error)
-      return reply.code(400).send({
-        status: false,
-        message: 'Could not fetch exchange rate',
-      });
-
-    payload = {
-      rate: res.data.exchange_rates[0].rate,
-    };
-
-    await createZohoRate({ payload });
-
-    // fetch all bank accounts details
-    let bankAccountUrl = `${config.ZOHO_BOOK_BASE_URL}/bankaccounts?organization_id=${config.ORGANIZATION_ID}`;
-
-    resp = await axios.get(bankAccountUrl, options);
-
-    if (resp.data.error)
-      return reply.code(400).send({
-        status: false,
-        message: 'Could not fetch bank accounts',
-      });
-
-    let ngnBalance = 0;
-    let usdBalance = 0;
-
-    for (const [rowNum, inputData] of resp.data.bankaccounts.entries()) {
-      // Save into databse
-      if (
-        (inputData.currency_code === 'USD' ||
-          inputData.currency_code === 'NGN') &&
-        inputData.balance > 0
-      ) {
-        let bankAccounts = {
-          accountName: inputData.account_name,
-          accountType: inputData.account_type,
-          accountNumber: inputData.account_number,
-          bankName: inputData.bank_name,
-          currency: inputData.currency_code,
-          balance: inputData.balance,
-        };
-
-        await createBankAccounts({ bankAccounts });
-      }
-
-      if (inputData.currency_code === 'USD') {
-        usdBalance += inputData.balance;
-      }
-
-      if (inputData.currency_code === 'NGN') {
-        ngnBalance += inputData.balance;
-      }
-    }
-
-    payload = {
-      naira: ngnBalance,
-      dollar: usdBalance,
-    };
-
-    await createOpeningBalance({ payload });
-
-    statusCode = 200;
-
-    result = {
-      status: true,
-      message: 'Successfully',
-      data: '',
-    };
-  } catch (e) {
-    statusCode = e.response.status;
-    result = {
-      status: false,
-      message: e.response.data.message,
-    };
-  }
-
-  return reply.status(statusCode).send(result);
-};
-
 const generateReportHandler = async (req, reply) => {
   let statusCode = 400;
   let result = {
@@ -772,8 +684,8 @@ const generateReportHandler = async (req, reply) => {
       parseFloat(nairaLastOpeningBalance.amount) +
       parseFloat(nairaLastInvoice.nairaClosingBalance) -
       parseFloat(nairaLastBill.nairaClosingBalance);
-    // then push to closing Balance
 
+    // then push to closing Balance
     closingBalances.push({
       month: closingBalMonth,
       amount: lastNairaClosingBalance,
@@ -786,8 +698,6 @@ const generateReportHandler = async (req, reply) => {
       currency: 'USD',
       date: closingBalDate,
     });
-
-    // TODO:: remove this
 
     // loop through opening balance to get cash inflow from invoiced sales total and cash outflow on currennt trade payables total
     for (j = 0; j < openingBalances.length / 2; j++) {
@@ -814,15 +724,15 @@ const generateReportHandler = async (req, reply) => {
       cashInflow.getCell(1).value = 'CASH INFLOWS';
 
       for (const [rowNum, inputData] of openingBalances.entries()) {
-        monthRow.getCell(rowNum + 2).value = inputData.month;
-        currencyRow.getCell(rowNum + 2).value = inputData.currency;
-        openingBalanceRow.getCell(rowNum + 2).value = inputData.amount;
+        monthRow.getCell(rowNum + 3).value = inputData.month;
+        currencyRow.getCell(rowNum + 3).value = inputData.currency;
+        openingBalanceRow.getCell(rowNum + 3).value = inputData.amount;
 
         monthRow.commit();
         currencyRow.commit();
         openingBalanceRow.commit();
       }
-      let openingBalanceLength = openingBalances.length;
+      let openingBalanceLength = openingBalances.length + 1;
       monthRow.getCell(openingBalanceLength + 2).value = 'Total';
       monthRow.getCell(openingBalanceLength + 3).value = 'Total';
       monthRow.getCell(openingBalanceLength + 5).value = 'Rate';
@@ -865,18 +775,19 @@ const generateReportHandler = async (req, reply) => {
               invoiceForecasts.rows[i - 1].currency.toLowerCase()
           ) {
             if (inputData.currencyCode.toLowerCase() === 'NGN'.toLowerCase()) {
-              rowX.getCell(i + 1).value = inputData.balance;
+              rowX.getCell(i + 2).value = inputData.balance;
             }
 
             if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
-              rowX.getCell(i).value = inputData.naira;
-              rowX.getCell(i + 1).value = inputData.balance;
+              rowX.getCell(i + 1).value = inputData.naira;
+              rowX.getCell(i + 2).value = inputData.balance;
             }
           }
         }
 
         sheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
           rowX.getCell(1).value = inputData.customerName;
+          rowX.getCell(2).value = inputData.invoiceNumber;
         });
 
         rowX.commit();
@@ -897,33 +808,34 @@ const generateReportHandler = async (req, reply) => {
           totalNairaClosingBalance =
             totalNairaClosingBalance +
             parseFloat(inputData.nairaClosingBalance);
-          cashInflowFromInvoiced.getCell(rowNum + 2).value =
+          cashInflowFromInvoiced.getCell(rowNum + 3).value =
             inputData.nairaClosingBalance;
-          totalCashInflowFromOperatingActivities.getCell(rowNum + 2).value =
+          totalCashInflowFromOperatingActivities.getCell(rowNum + 3).value =
             inputData.nairaClosingBalance;
         } else {
           totalDollarClosingBalance =
             totalDollarClosingBalance +
             parseFloat(inputData.dollarClosingBalance);
-          cashInflowFromInvoiced.getCell(rowNum + 2).value =
+          cashInflowFromInvoiced.getCell(rowNum + 3).value =
             inputData.dollarClosingBalance;
-          totalCashInflowFromOperatingActivities.getCell(rowNum + 2).value =
+          totalCashInflowFromOperatingActivities.getCell(rowNum + 3).value =
             inputData.dollarClosingBalance;
         }
 
         cashInflowFromInvoiced.commit();
       }
 
+      // total invoice forecast for dollar and naira
       let invoiceForecastsLength = invoiceForecasts.rows.length;
-      cashInflowFromInvoiced.getCell(invoiceForecastsLength + 2).value =
-        totalNairaClosingBalance;
       cashInflowFromInvoiced.getCell(invoiceForecastsLength + 3).value =
+        totalNairaClosingBalance;
+      cashInflowFromInvoiced.getCell(invoiceForecastsLength + 4).value =
         totalDollarClosingBalance;
       totalCashInflowFromOperatingActivities.getCell(
-        invoiceForecastsLength + 2
+        invoiceForecastsLength + 3
       ).value = totalNairaClosingBalance;
       totalCashInflowFromOperatingActivities.getCell(
-        invoiceForecastsLength + 3
+        invoiceForecastsLength + 4
       ).value = totalDollarClosingBalance;
 
       cashInflowFromInvoiced.commit();
@@ -948,18 +860,19 @@ const generateReportHandler = async (req, reply) => {
               invoiceForecasts.rows[i - 1].currency.toLowerCase()
           ) {
             if (inputData.currencyCode.toLowerCase() === 'NGN'.toLowerCase()) {
-              rowX.getCell(i + 1).value = inputData.balance;
+              rowX.getCell(i + 2).value = inputData.balance;
             }
 
             if (inputData.currencyCode.toLowerCase() === 'USD'.toLowerCase()) {
-              rowX.getCell(i).value = inputData.naira;
-              rowX.getCell(i + 1).value = inputData.balance;
+              rowX.getCell(i + 1).value = inputData.naira;
+              rowX.getCell(i + 2).value = inputData.balance;
             }
           }
         }
 
         sheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
           rowX.getCell(1).value = inputData.vendorName;
+          rowX.getCell(2).value = inputData.refrenceNumber;
         });
 
         rowX.commit();
@@ -983,36 +896,39 @@ const generateReportHandler = async (req, reply) => {
             inputData.nairaClosingBalance
           );
           totalNairaCashOutflows += parseFloat(inputData.nairaClosingBalance);
-          cashOutflowsOnCurrentTradePayables.getCell(rowNum + 2).value =
+          cashOutflowsOnCurrentTradePayables.getCell(rowNum + 3).value =
             inputData.nairaClosingBalance;
-          totalCashOutflows.getCell(rowNum + 2).value =
+          totalCashOutflows.getCell(rowNum + 3).value =
             inputData.nairaClosingBalance;
         } else {
           totalDollarCashOutflowsOnCurrentTradePayables += parseFloat(
             inputData.dollarClosingBalance
           );
           totalDollarCashOutflows += parseFloat(inputData.dollarClosingBalance);
-          cashOutflowsOnCurrentTradePayables.getCell(rowNum + 2).value =
+          cashOutflowsOnCurrentTradePayables.getCell(rowNum + 3).value =
             inputData.dollarClosingBalance;
-          totalCashOutflows.getCell(rowNum + 2).value =
+          totalCashOutflows.getCell(rowNum + 3).value =
             inputData.dollarClosingBalance;
         }
 
         cashOutflowsOnCurrentTradePayables.commit();
       }
 
+      // total bill forecast for naira and dollar
       let billForecastsLength = billForecasts.rows.length;
       cashOutflowsOnCurrentTradePayables.getCell(
-        billForecastsLength + 2
+        billForecastsLength + 3
       ).value = totalNairaCashOutflowsOnCurrentTradePayables;
-      totalCashOutflows.getCell(billForecastsLength + 2).value =
-        totalNairaCashOutflows;
 
       cashOutflowsOnCurrentTradePayables.getCell(
-        billForecastsLength + 3
+        billForecastsLength + 4
       ).value = totalDollarCashOutflowsOnCurrentTradePayables;
+
       totalCashOutflows.getCell(billForecastsLength + 3).value =
         totalDollarCashOutflows;
+
+      totalCashOutflows.getCell(billForecastsLength + 4).value =
+        totalNairaCashOutflows;
 
       cashOutflowsOnCurrentTradePayables.commit();
       totalCashOutflows.commit();
@@ -1021,7 +937,7 @@ const generateReportHandler = async (req, reply) => {
       const closingBalanceRow = netWorkingCapital;
 
       for (const [rowNum, inputData] of closingBalances.entries()) {
-        closingBalanceRow.getCell(rowNum + 2).value = inputData.amount;
+        closingBalanceRow.getCell(rowNum + 3).value = inputData.amount;
 
         closingBalanceRow.commit();
       }
@@ -1037,9 +953,9 @@ const generateReportHandler = async (req, reply) => {
         parseFloat(totalDollarClosingBalance) -
         parseFloat(totalDollarCashOutflows);
 
-      netWorkingCapital.getCell(closingBalances.length + 2).value =
-        totalNairaNetWorkingCapital;
       netWorkingCapital.getCell(closingBalances.length + 3).value =
+        totalNairaNetWorkingCapital;
+      netWorkingCapital.getCell(closingBalances.length + 4).value =
         totalDollarNetWorkingCapital;
 
       statusCode = 200;
@@ -1160,5 +1076,4 @@ const salesOrderHandler = async (req, reply) => {
 module.exports = {
   generateReportHandler,
   salesOrderHandler,
-  createOpeningBalanceHandler,
 };

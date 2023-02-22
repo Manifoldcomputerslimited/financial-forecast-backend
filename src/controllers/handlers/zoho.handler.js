@@ -5,7 +5,6 @@ let moment = require('moment');
 
 const { getZohoExchangeRateHandler } = require('./exchange.handler');
 const {
-  createZohoRate,
   createInvoiceForecast,
   createInvoice,
   createBill,
@@ -20,9 +19,7 @@ const {
   fetchAllInvoice,
   fetchAllBill,
   fetchAllSale,
-  createOpeningBalance,
   getPreviousDayOpeningBalance,
-  createBankAccounts,
 } = require('../../helpers/dbQuery');
 const { saleForecasts } = require('../../models');
 moment().format();
@@ -436,132 +433,6 @@ const getSalesOrder = async (
   }
 };
 
-// This function will be executed by a CRON JOB daily
-// stores todays exchange rate and opening in the database
-const createOpeningBalanceHandler = async (req, reply) => {
-  try {
-    const TODAY_START = moment().startOf('day').format();
-    const TODAY_END = moment().endOf('day').format();
-
-    let prevOpeningBalData = {
-      yesterday_start: TODAY_START,
-      yesterday_end: TODAY_END,
-    };
-    // check if opening balance has been updated today.
-    const openingBalance = await getPreviousDayOpeningBalance({
-      prevOpeningBalData,
-    });
-
-    if (openingBalance) {
-      return reply.code(400).send({
-        status: false,
-        message: 'Opening Balance Already Exists',
-      });
-    }
-
-    // get zoho access token
-    url = `${config.ZOHO_BASE_URL}?refresh_token=${config.ZOHO_REFRESH_TOKEN}&client_id=${config.ZOHO_CLIENT_ID}&client_secret=${config.ZOHO_CLIENT_SECRET}&redirect_uri=${config.ZOHO_REDIRECT_URI}&grant_type=refresh_token`;
-
-    zoho = await axios.post(url);
-
-    if (zoho.data.error) {
-      return reply.code(400).send({
-        status: false,
-        message: 'Invalid code',
-      });
-    }
-
-    const options = {
-      headers: {
-        'Content-Type': ['application/json'],
-        Authorization: 'Bearer ' + zoho.data.access_token,
-      },
-    };
-
-    // get current exchange rate from zoho
-    let rateUrl = `${config.ZOHO_BOOK_BASE_URL}/settings/currencies/${config.DOLLAR_CURRENCY_ID}/exchangerates?organization_id=${config.ORGANIZATION_ID}`;
-
-    res = await axios.get(rateUrl, options);
-
-    if (res.data.error)
-      return reply.code(400).send({
-        status: false,
-        message: 'Could not fetch exchange rate',
-      });
-
-    payload = {
-      rate: res.data.exchange_rates[0].rate,
-    };
-
-    await createZohoRate({ payload });
-
-    // fetch all bank accounts details
-    let bankAccountUrl = `${config.ZOHO_BOOK_BASE_URL}/bankaccounts?organization_id=${config.ORGANIZATION_ID}`;
-
-    resp = await axios.get(bankAccountUrl, options);
-
-    if (resp.data.error)
-      return reply.code(400).send({
-        status: false,
-        message: 'Could not fetch bank accounts',
-      });
-
-    let ngnBalance = 0;
-    let usdBalance = 0;
-
-    for (const [rowNum, inputData] of resp.data.bankaccounts.entries()) {
-      // Save into databse
-      if (
-        (inputData.currency_code === 'USD' ||
-          inputData.currency_code === 'NGN') &&
-        inputData.balance > 0
-      ) {
-        let bankAccounts = {
-          accountName: inputData.account_name,
-          accountType: inputData.account_type,
-          accountNumber: inputData.account_number,
-          bankName: inputData.bank_name,
-          currency: inputData.currency_code,
-          balance: inputData.balance,
-        };
-
-        await createBankAccounts({ bankAccounts });
-      }
-
-      if (inputData.currency_code === 'USD') {
-        usdBalance += inputData.balance;
-      }
-
-      if (inputData.currency_code === 'NGN') {
-        ngnBalance += inputData.balance;
-      }
-    }
-
-    payload = {
-      naira: ngnBalance,
-      dollar: usdBalance,
-    };
-
-    await createOpeningBalance({ payload });
-
-    statusCode = 200;
-
-    result = {
-      status: true,
-      message: 'Successfully',
-      data: '',
-    };
-  } catch (e) {
-    statusCode = e.response.status;
-    result = {
-      status: false,
-      message: e.response.data.message,
-    };
-  }
-
-  return reply.status(statusCode).send(result);
-};
-
 const generateReportHandler = async (req, reply) => {
   let statusCode = 400;
   let result = {
@@ -813,8 +684,8 @@ const generateReportHandler = async (req, reply) => {
       parseFloat(nairaLastOpeningBalance.amount) +
       parseFloat(nairaLastInvoice.nairaClosingBalance) -
       parseFloat(nairaLastBill.nairaClosingBalance);
-    // then push to closing Balance
 
+    // then push to closing Balance
     closingBalances.push({
       month: closingBalMonth,
       amount: lastNairaClosingBalance,
@@ -827,8 +698,6 @@ const generateReportHandler = async (req, reply) => {
       currency: 'USD',
       date: closingBalDate,
     });
-
-    // TODO:: remove this
 
     // loop through opening balance to get cash inflow from invoiced sales total and cash outflow on currennt trade payables total
     for (j = 0; j < openingBalances.length / 2; j++) {
@@ -1207,5 +1076,4 @@ const salesOrderHandler = async (req, reply) => {
 module.exports = {
   generateReportHandler,
   salesOrderHandler,
-  createOpeningBalanceHandler,
 };

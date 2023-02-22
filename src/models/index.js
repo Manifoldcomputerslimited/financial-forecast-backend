@@ -42,12 +42,13 @@ db.billForecasts = require('./bill.forecast.model')(sequelize, Sequelize);
 db.initialBalances = require('./initial.balance.model')(sequelize, Sequelize);
 db.openingBalances = require('./opening.balance.model')(sequelize, Sequelize);
 db.bankAccounts = require('./bank.account.model')(sequelize, Sequelize);
+db.overdrafts = require('./overdraft.model')(sequelize, Sequelize);
 
 db.tokens.belongsTo(db.users, { foreignKey: 'userId' });
 db.users.hasMany(db.tokens, { foreignKey: 'userId' });
 
 sequelize
-  .sync({ alter: true })
+  .sync({ force: false, alter: true })
   .then(async () => {
     // await db.roles.create({
     //   name: "Admin",

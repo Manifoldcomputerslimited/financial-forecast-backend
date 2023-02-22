@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-  const BankAccount = sequelize.define('bankAccount', {
+  const Overdraft = sequelize.define('overdraft', {
     accountId: {
       type: DataTypes.STRING,
     },
@@ -18,15 +18,11 @@ module.exports = (sequelize, DataTypes) => {
     currency: {
       type: DataTypes.STRING,
     },
-    balance: {
-      type: DataTypes.DECIMAL(12, 2),
-      defaultValue: 0.0,
-    },
-    overdraftBalance: {
+    amount: {
       type: DataTypes.DECIMAL(12, 2),
       defaultValue: 0.0,
     },
   });
 
-  return BankAccount;
+  return Overdraft;
 };

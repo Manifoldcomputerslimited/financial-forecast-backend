@@ -8,10 +8,6 @@ const generateZohoTokenOpts = {
   handler: tokenController.generateZohoTokenHandler,
 };
 
-const createOpeningbalanceOpts = {
-  handler: zohoController.createOpeningBalanceHandler,
-};
-
 const refreshZohoTokenOpts = {
   handler: tokenController.refreshZohoTokenHandler,
 };
@@ -44,6 +40,26 @@ const fetchBankAccountsOpts = {
   handler: forecastController.bankAccountsHandler,
 };
 
+const createOpeningbalanceOpts = {
+  handler: forecastController.createOpeningBalanceHandler,
+};
+
+const createOverdraftOpts = {
+  handler: forecastController.createOverdraftHandler,
+};
+
+const updateOverdraftOpts = {
+  handler: forecastController.updateOverdraftHandler,
+};
+
+const getOverdraftsOpts = {
+  handler: forecastController.getOverdraftHandler,
+};
+
+const deleteOverdraftOpts = {
+  handler: forecastController.deleteOverdraftHandler,
+};
+
 const zohoRoutes = async (fastify, options) => {
   fastify.get('/zoho/opening/balance/create', createOpeningbalanceOpts);
 
@@ -53,6 +69,29 @@ const zohoRoutes = async (fastify, options) => {
 };
 
 const privateRoutes = async (fastify, options) => {
+  // add overdraft
+  fastify.post('/zoho/overdraft', {
+    preHandler: fastify.auth([verifyToken]),
+    ...createOverdraftOpts,
+  });
+
+  // update overdraft
+  fastify.put('/zoho/overdraft/:id', {
+    preHandler: fastify.auth([verifyToken]),
+    ...updateOverdraftOpts,
+  });
+
+  // delete overdraft
+  fastify.delete('/zoho/overdraft/:id', {
+    preHandler: fastify.auth([verifyToken]),
+    ...deleteOverdraftOpts,
+  });
+
+  fastify.get('/zoho/overdraft', {
+    preHandler: fastify.auth([verifyToken]),
+    ...getOverdraftsOpts,
+  });
+
   fastify.get('/zoho/bank/accounts', {
     preHandler: fastify.auth([verifyToken]),
     ...fetchBankAccountsOpts,

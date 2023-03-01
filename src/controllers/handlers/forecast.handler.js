@@ -589,7 +589,6 @@ const updateOverdraftHandler = async (req, reply) => {
       message: 'Overdraft account updated successfully',
     };
   } catch (e) {
-    console.log(e);
     statusCode = e.code;
     result = {
       status: false,

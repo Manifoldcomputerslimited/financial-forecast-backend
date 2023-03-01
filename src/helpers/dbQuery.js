@@ -188,6 +188,7 @@ const createBankAccounts = async ({ bankAccounts }) => {
 };
 
 const getPreviousDayOpeningBalance = async ({ prevOpeningBalData }) => {
+  console.log('what is date', prevOpeningBalData);
   return await OpeningBalance.findOne({
     where: {
       createdAt: {

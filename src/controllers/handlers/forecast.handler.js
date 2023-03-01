@@ -163,8 +163,8 @@ const bankAccountsHandler = async (req, reply) => {
 const createOpeningBalanceHandler = async (req, reply) => {
   try {
     let prevOpeningBalData = {
-      yesterday_start: TODAY_START,
-      yesterday_end: TODAY_END,
+      yesterday_start: YESTERDAY_START,
+      yesterday_end: YESTERDAY_END,
     };
     // check if opening balance has been updated today.
     const openingBalance = await getPreviousDayOpeningBalance({

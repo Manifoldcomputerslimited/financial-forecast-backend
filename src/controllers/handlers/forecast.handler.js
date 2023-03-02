@@ -159,25 +159,22 @@ const bankAccountsHandler = async (req, reply) => {
 // This function will be executed by a CRON JOB daily
 // stores todays exchange rate and opening in the database
 const createOpeningBalanceHandler = async (req, reply) => {
-  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
-  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
-  console.log(moment());
-  console.log(YESTERDAY_START);
-  console.log(YESTERDAY_END);
+  const TODAY_START = moment().startOf('day').format();
+  const TODAY_END = moment().endOf('day').format();
   try {
-    let prevOpeningBalData = {
-      yesterday_start: YESTERDAY_START,
-      yesterday_end: YESTERDAY_END,
+    let todayOpeningBalData = {
+      yesterday_start: TODAY_START,
+      yesterday_end: TODAY_END,
     };
     // check if opening balance has been updated today.
-    const openingBalance = await getPreviousDayOpeningBalance({
-      prevOpeningBalData,
+    const openingBalance = await getTodayDayOpeningBalance({
+      todayOpeningBalData,
     });
 
     if (openingBalance) {
       return reply.code(400).send({
         status: false,
-        message: 'Opening Balance Already Exists',
+        message: 'Opening Balance Already Exits for today',
       });
     }
 

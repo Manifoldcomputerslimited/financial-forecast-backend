@@ -187,6 +187,18 @@ const createBankAccounts = async ({ bankAccounts }) => {
   return await BankAccount.create(bankAccounts);
 };
 
+const getTodayDayOpeningBalance = async ({ openingBalData }) => {
+  return await OpeningBalance.findOne({
+    where: {
+      createdAt: {
+        [Op.gt]: openingBalData.today_start,
+        [Op.lt]: openingBalData.today_end,
+      },
+    },
+  });
+};
+
+
 const getPreviousDayOpeningBalance = async ({ prevOpeningBalData }) => {
   console.log('prev date', prevOpeningBalData);
   return await OpeningBalance.findOne({
@@ -221,5 +233,6 @@ module.exports = {
   createInitialBalance,
   createOpeningBalance,
   createBankAccounts,
+  getTodayDayOpeningBalance,
   getPreviousDayOpeningBalance,
 };

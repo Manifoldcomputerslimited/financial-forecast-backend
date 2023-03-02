@@ -7,7 +7,7 @@ const {
   createZohoRate,
   createOpeningBalance,
   createBankAccounts,
-  getPreviousDayOpeningBalance,
+  getTodayDayOpeningBalance,
 } = require('../../helpers/dbQuery');
 
 const InvoiceForecast = db.invoiceForecasts;

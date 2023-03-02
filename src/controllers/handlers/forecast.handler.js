@@ -22,13 +22,9 @@ const Rate = db.rates;
 const Overdraft = db.overdrafts;
 const OpeningBalance = db.openingBalances;
 
-const TODAY_START = moment().startOf('day').format();
-const TODAY_END = moment().endOf('day').format();
-
-const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
-const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
-
 const resyncHandler = async (req, reply) => {
+  const TODAY_START = moment().startOf('day').format();
+  const TODAY_END = moment().endOf('day').format();
   try {
     const userId = req.user.id;
 
@@ -130,6 +126,8 @@ const resyncHandler = async (req, reply) => {
 };
 
 const bankAccountsHandler = async (req, reply) => {
+  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
+  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
   try {
     let bankAccounts = await BankAccount.findAll({
       where: {
@@ -161,6 +159,11 @@ const bankAccountsHandler = async (req, reply) => {
 // This function will be executed by a CRON JOB daily
 // stores todays exchange rate and opening in the database
 const createOpeningBalanceHandler = async (req, reply) => {
+  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
+  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
+  console.log(moment());
+  console.log(YESTERDAY_START);
+  console.log(YESTERDAY_END);
   try {
     let prevOpeningBalData = {
       yesterday_start: YESTERDAY_START,
@@ -298,6 +301,8 @@ const createOpeningBalanceHandler = async (req, reply) => {
 };
 
 const createOverdraftHandler = async (req, reply) => {
+  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
+  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
   const {
     accountId,
     accountName,
@@ -441,6 +446,8 @@ const createOverdraftHandler = async (req, reply) => {
 };
 
 const updateOverdraftHandler = async (req, reply) => {
+  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
+  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
   const id = req.params.id;
   const { amount } = req.body;
 
@@ -599,6 +606,8 @@ const updateOverdraftHandler = async (req, reply) => {
 };
 
 const deleteOverdraftHandler = async (req, reply) => {
+  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
+  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
   const id = req.params.id;
 
   try {

@@ -343,12 +343,6 @@ const createOverdraftHandler = async (req, reply) => {
         message: 'Bank account not found',
       });
 
-    if (bankAccount && bankAccount.dataValues.balance > 0)
-      return reply.code(400).send({
-        status: false,
-        message: 'Bank account balance is greater than 0',
-      });
-
     overdraft = await Overdraft.create({
       accountId,
       accountName,

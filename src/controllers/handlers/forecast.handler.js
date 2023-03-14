@@ -162,13 +162,13 @@ const createOpeningBalanceHandler = async (req, reply) => {
   const TODAY_START = moment().startOf('day').format();
   const TODAY_END = moment().endOf('day').format();
   try {
-    let todayOpeningBalData = {
-      yesterday_start: TODAY_START,
-      yesterday_end: TODAY_END,
+    let openingBalData = {
+      today_start: TODAY_START,
+      today_end: TODAY_END,
     };
     // check if opening balance has been updated today.
     const openingBalance = await getTodayDayOpeningBalance({
-      todayOpeningBalData,
+      openingBalData,
     });
 
     if (openingBalance) {
@@ -287,6 +287,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
       data: '',
     };
   } catch (e) {
+    console.log(e);
     statusCode = e.response.status;
     result = {
       status: false,
@@ -340,12 +341,6 @@ const createOverdraftHandler = async (req, reply) => {
       return reply.code(404).send({
         status: false,
         message: 'Bank account not found',
-      });
-
-    if (bankAccount && bankAccount.dataValues.balance > 0)
-      return reply.code(400).send({
-        status: false,
-        message: 'Bank account balance is greater than 0',
       });
 
     overdraft = await Overdraft.create({

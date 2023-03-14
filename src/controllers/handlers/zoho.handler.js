@@ -1017,9 +1017,9 @@ const generateReportHandler = async (req, reply) => {
               dollar: totalDollarNetWorkingCapital,
             },
           },
-          invoices: invoices.rows.reverse(),
-          bills: bills.rows.reverse(),
-          sales: sales.rows.reverse(),
+          invoices: invoices.rows,
+          bills: bills.rows,
+          sales: sales.rows,
         },
       };
     }

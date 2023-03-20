@@ -10,18 +10,29 @@ const {
   createBill,
   createBillForecast,
   createInitialBalance,
+  createPurchase,
+  createPurchaseForecast,
   createSale,
   createSaleForecast,
+  createVendorPayment,
   getInitialBalance,
   fetchAllInvoiceForecast,
   fetchAllBillForecast,
+  fetchAllPurchaseForecast,
   fetchAllSaleForecast,
   fetchAllInvoice,
   fetchAllBill,
+  fetchAllPurchase,
   fetchAllSale,
+  fetchAllVendorPayments,
+  getPurchaseForecast,
   getPreviousDayOpeningBalance,
+  getVendorPaymentByVendorId,
+  updateVendorPaymentByVendorId,
 } = require('../../helpers/dbQuery');
-const { saleForecasts } = require('../../models');
+const db = require('../../models');
+const VendorPayment = db.vendorPayments;
+const Purchase = db.purchases;
 moment().format();
 
 const getInvoice = async (
@@ -316,6 +327,368 @@ const getBill = async (
   }
 };
 
+const getVendorPayments = async (
+  zohoAccessToken,
+  forecastNumber,
+  forecastPeriod,
+  rate,
+  userId
+) => {
+  let vendorPayments = [];
+  let i = 1;
+  const TODAY_START = moment().startOf('day').format();
+  const TODAY_END = moment().endOf('day').format();
+
+  options = {
+    headers: {
+      'Content-Type': ['application/json'],
+      Authorization: 'Zoho-oauthtoken ' + zohoAccessToken,
+    },
+  };
+
+  do {
+    let url = `${config.ZOHO_BOOK_BASE_URL}/vendorpayments?organization_id=${config.ORGANIZATION_ID}&page=${i}`;
+
+    resp = await axios.get(url, options);
+
+    const filteredVendorPayments = resp.data.vendorpayments.filter(
+      (item, index) =>
+        item.balance > 0 &&
+        (item.currency_code === 'USD' || item.currency_code === 'NGN')
+    );
+
+    filteredVendorPayments.reduce(async function (a, e) {
+      vendorPayments.push(e);
+      return e;
+    }, 0);
+
+    ++i;
+  } while (resp.data.page_context.has_more_page);
+
+  for (i = 0; i < vendorPayments.length; i++) {
+    let e = vendorPayments[i];
+    let payload = {
+      vendorId: e.vendor_id,
+      userId,
+      forecastNumber: forecastNumber,
+      forecastPeriod: forecastPeriod,
+      today_start: TODAY_START,
+      today_end: TODAY_END,
+      currencyCode: e.currency_code,
+    };
+
+    let vendorPayment = await getVendorPaymentByVendorId({ payload });
+
+    if (vendorPayment) {
+      await vendorPayment.update({
+        amount: parseFloat(vendorPayment.amount) + parseFloat(e.balance),
+        balance: parseFloat(vendorPayment.balance) + parseFloat(e.balance),
+        purchaseForcastbalance:
+          parseFloat(vendorPayment.purchaseForcastbalance) +
+          parseFloat(e.balance),
+      });
+      continue;
+    }
+
+    payload = {
+      userId,
+      paymentId: e.payment_id,
+      vendorId: e.vendor_id,
+      vendorName: e.vendor_name,
+      billNumbers: e.bill_numbers,
+      referenceNumber: e.reference_number,
+      date: e.date,
+      currencyCode: e.currency_code,
+      amount: e.balance,
+      balance: e.balance,
+      purchaseForcastbalance: e.balance,
+      exchangeRate: e.exchange_rate,
+      forecastType: `${forecastNumber} ${forecastPeriod}`,
+    };
+
+    await createVendorPayment({
+      payload,
+    });
+  }
+};
+
+const getPurchaseOrder = async (
+  options,
+  forecastNumber,
+  forecastPeriod,
+  rate,
+  userId
+) => {
+  let date = moment();
+  let startDate;
+  let endDate;
+
+  startDate = date
+    .clone()
+    .add(0, forecastPeriod)
+    .startOf(forecastPeriod)
+    .format('YYYY-MM-DD');
+  endDate = date
+    .clone()
+    .add(forecastNumber - 1, forecastPeriod)
+    .endOf(forecastPeriod)
+    .format('YYYY-MM-DD');
+
+  let filteredPurchases = [];
+  let i = 1;
+  let payload;
+
+  do {
+    let url = `${config.ZOHO_BOOK_BASE_URL}/purchaseorders?organization_id=${config.ORGANIZATION_ID}&filter_by=Status.Open&sort_column=delivery_date&page=${i}`;
+
+    resp = await axios.get(url, options);
+
+    if (
+      Array.isArray(resp.data.purchaseorders) &&
+      resp.data.purchaseorders.length > 0
+    ) {
+      const filteredPreviousPurchases = resp.data.purchaseorders.filter(
+        (item, index) => item.delivery_date < startDate
+      );
+
+      const filteredCurrentPurchases = resp.data.purchaseorders.filter(
+        (item, index) =>
+          item.delivery_date >= startDate && item.delivery_date <= endDate
+      );
+
+      filteredPreviousPurchases.reduce(async function (a, e) {
+        e.delivery_date = startDate;
+        filteredPurchases.push(e);
+        return e;
+      }, 0);
+
+      filteredCurrentPurchases.reduce(async function (a, e) {
+        filteredPurchases.push(e);
+        return e;
+      }, 0);
+    }
+
+    ++i;
+  } while (!resp.data.purchaseorders.length);
+
+  for (i = 0; i < forecastNumber; i++) {
+    startDate = date
+      .clone()
+      .add(Math.abs(i), forecastPeriod)
+      .startOf(forecastPeriod)
+      .format('YYYY-MM-DD');
+    endDate = date
+      .clone()
+      .add(Math.abs(i), forecastPeriod)
+      .endOf(forecastPeriod)
+      .format('YYYY-MM-DD');
+
+    let newFilteredPurchases = filteredPurchases.filter(
+      (item, index) =>
+        item.delivery_date >= startDate &&
+        item.delivery_date <= endDate &&
+        item.status == 'open'
+    );
+
+    dollarClosingBalance = newFilteredPurchases.reduce(function (acc, obj) {
+      balance = obj.currency_code === 'USD' ? obj.total : 0.0;
+
+      return acc + balance;
+    }, 0);
+
+    nairaClosingBalance = newFilteredPurchases.reduce(function (acc, obj) {
+      balance =
+        obj.currency_code === 'NGN'
+          ? obj.total
+          : obj.total * parseFloat(rate.latest).toFixed(2);
+
+      if (rate.old !== rate.latest) {
+        balance =
+          (balance / parseFloat(rate.old).toFixed(2)) *
+          parseFloat(rate.latest).toFixed(2);
+      }
+
+      return acc + balance;
+    }, 0);
+
+    await createPurchaseForecast(
+      userId,
+      parseFloat(nairaClosingBalance).toFixed(2),
+      0.0,
+      startDate,
+      forecastNumber,
+      forecastPeriod,
+      'NGN'
+    );
+
+    await createPurchaseForecast(
+      userId,
+      0.0,
+      parseFloat(dollarClosingBalance).toFixed(2),
+      startDate,
+      forecastNumber,
+      forecastPeriod,
+      'USD'
+    );
+
+    newFilteredPurchases.reduce(async function (a, e) {
+      if (
+        parseFloat(e.total) > 0 &&
+        (e.delivery_date >= startDate || e.delivery_date <= endDate)
+      ) {
+        if (
+          parseFloat(rate.old).toFixed(2) !==
+            parseFloat(rate.latest).toFixed(2) &&
+          e.currency_code === 'NGN'
+        ) {
+          e.total =
+            (parseFloat(e.total).toFixed(2) / parseFloat(rate.old).toFixed(2)) *
+            parseFloat(rate.latest).toFixed(2);
+        }
+      
+        payload = {
+          userId,
+          purchaseOrderId: e.purchaseorder_id,
+          vendorId: e.vendor_id,
+          vendorName: e.vendor_name,
+          status: e.status,
+          purchaseOrderNumber: e.purchaseorder_number,
+          refrenceNumber: e.reference_number,
+          date: e.date,
+          deliveryDate: e.delivery_date,
+          currencyCode: e.currency_code,
+          total: e.total,
+          naira:
+            e.currency_code === 'NGN'
+              ? e.total
+              : e.total * parseFloat(rate.latest).toFixed(2),
+          dollar: e.currency_code === 'USD' ? e.total : 0.0,
+          balance: e.total,
+          exchangeRate: parseFloat(rate.latest).toFixed(2),
+          forecastType: `${forecastNumber} ${forecastPeriod}`,
+        };
+
+        await createPurchase({ payload });
+      }
+      return;
+    }, 0);
+  }
+};
+
+const processPurchases = async (
+  purchases,
+  vendorPayments,
+  userId,
+  forecastNumber,
+  forecastPeriod
+) => {
+  const TODAY_START = moment().startOf('day').format();
+  const TODAY_END = moment().endOf('day').format();
+
+  let nairaBalance = 0;
+  let dollarBalance = 0;
+
+  for (i = 0; i < purchases.count; i++) {
+    for (j = 0; j < vendorPayments.count; j++) {
+      let purchase = purchases.rows[i];
+      let payment = vendorPayments.rows[j];
+      if (
+        purchase.vendorId == payment.vendorId &&
+        purchase.currencyCode == payment.currencyCode
+      ) {
+        let paymentMadeBalance = 0;
+        let total = 0;
+
+        let purchaseMade = parseFloat(purchase.total);
+        let vendorPayment = await VendorPayment.findOne({
+          where: {
+            vendorId: payment.vendorId,
+          },
+        });
+        let paymentMade = parseFloat(vendorPayment.balance);
+        if (paymentMade >= purchaseMade) {
+          paymentMadeBalance = paymentMade - purchaseMade;
+          dollarBalance =
+            payment.currencyCode == 'USD'
+              ? dollarBalance + purchaseMade
+              : dollarBalance;
+          nairaBalance =
+            payment.currencyCode == 'NGN'
+              ? nairaBalance + purchaseMade
+              : nairaBalance;
+        } else {
+          total = purchaseMade - paymentMade;
+
+          dollarBalance =
+            payment.currencyCode == 'USD'
+              ? dollarBalance + paymentMade
+              : dollarBalance;
+          nairaBalance =
+            payment.currencyCode == 'NGN'
+              ? nairaBalance + paymentMade
+              : nairaBalance;
+        }
+        await VendorPayment.update(
+          {
+            balance: paymentMadeBalance,
+          },
+          {
+            where: {
+              vendorId: payment.vendorId,
+            },
+          }
+        );
+
+        await Purchase.update(
+          {
+            balance: total,
+          },
+          {
+            where: {
+              vendorId: payment.vendorId,
+              purchaseOrderId: purchase.purchaseOrderId,
+            },
+          }
+        );
+      }
+    }
+  }
+
+  let payload = {
+    userId: userId,
+    forecastNumber: forecastNumber,
+    forecastPeriod: forecastPeriod,
+    currency: 'NGN',
+    today_start: TODAY_START,
+    today_end: TODAY_END,
+  };
+
+  let purchaseNairaForecast = await getPurchaseForecast({ payload });
+
+  await purchaseNairaForecast.update({
+    nairaClosingBalance:
+      parseFloat(purchaseNairaForecast.nairaClosingBalance) -
+      parseFloat(nairaBalance),
+  });
+
+  payload = {
+    userId: userId,
+    forecastNumber: forecastNumber,
+    forecastPeriod: forecastPeriod,
+    currency: 'USD',
+    today_start: TODAY_START,
+    today_end: TODAY_END,
+  };
+
+  let purchaseDollarForecast = await getPurchaseForecast({ payload });
+
+  await purchaseDollarForecast.update({
+    dollarClosingBalance:
+      parseFloat(purchaseDollarForecast.dollarClosingBalance) -
+      parseFloat(dollarBalance),
+  });
+};
+
 const getSalesOrder = async (
   options,
   forecastNumber,
@@ -486,21 +859,8 @@ const generateReportHandler = async (req, reply) => {
       today_end: TODAY_END,
     };
 
-    let invoices = await fetchAllInvoice({ payload });
-
-    let bills = await fetchAllBill({ payload });
-
-    let sales = await fetchAllSale({ payload });
-
     // Get initial opening balance for a particular user
     let initialOpeningBalance = await getInitialBalance({ payload });
-
-    let saleForecasts = await fetchAllSaleForecast({ payload });
-
-    // get invoice forecast where forecastType
-    let invoiceForecasts = await fetchAllInvoiceForecast({ payload });
-
-    let billForecasts = await fetchAllBillForecast({ payload });
 
     // if user has not generated opening balance for the day then
     if (!initialOpeningBalance) {
@@ -548,14 +908,51 @@ const generateReportHandler = async (req, reply) => {
       initialOpeningBalance = await getInitialBalance({ payload });
     }
 
+    let vendorPayments = await fetchAllVendorPayments({ payload });
+
+    let invoices = await fetchAllInvoice({ payload });
+
+    let bills = await fetchAllBill({ payload });
+
+    let purchases = await fetchAllPurchase({ payload });
+
+    let sales = await fetchAllSale({ payload });
+
+    let purchaseForecasts = await fetchAllPurchaseForecast({ payload });
+
+    let saleForecasts = await fetchAllSaleForecast({ payload });
+
+    // get invoice forecast where forecastType
+    let invoiceForecasts = await fetchAllInvoiceForecast({ payload });
+
+    let billForecasts = await fetchAllBillForecast({ payload });
+
     if (
       !billForecasts.count &&
       !invoiceForecasts.count &&
+      !purchaseForecasts.count &&
       !bills.count &&
-      !invoices.count
+      !invoices.count &&
+      !purchases.count &&
+      !vendorPayments.count
     ) {
-      //TODO:: this should be v2
+      await getVendorPayments(
+        zohoAccessToken,
+        forecastNumber,
+        forecastPeriod,
+        rate,
+        userId
+      );
+
       await getSalesOrder(
+        options,
+        forecastNumber,
+        forecastPeriod,
+        rate,
+        userId
+      );
+
+      await getPurchaseOrder(
         options,
         forecastNumber,
         forecastPeriod,
@@ -567,11 +964,17 @@ const generateReportHandler = async (req, reply) => {
 
       await getBill(options, forecastNumber, forecastPeriod, rate, userId);
 
+      vendorPayments = await fetchAllVendorPayments({ payload });
+
+      purchases = await fetchAllPurchase({ payload });
+
       sales = await fetchAllSale({ payload });
 
       invoices = await fetchAllInvoice({ payload });
 
       bills = await fetchAllBill({ payload });
+
+      purchaseForecasts = await fetchAllPurchaseForecast({ payload });
 
       saleForecasts = await fetchAllSaleForecast({ payload });
 
@@ -579,8 +982,17 @@ const generateReportHandler = async (req, reply) => {
       invoiceForecasts = await fetchAllInvoiceForecast({ payload });
 
       billForecasts = await fetchAllBillForecast({ payload });
+
+      await processPurchases(
+        purchases,
+        vendorPayments,
+        userId,
+        forecastNumber,
+        forecastPeriod
+      );
     }
 
+    // return;
     let check = date.clone().add(0, forecastPeriod).startOf(forecastPeriod);
     let month = check.format('MMMM');
 
@@ -1017,9 +1429,10 @@ const generateReportHandler = async (req, reply) => {
               dollar: totalDollarNetWorkingCapital,
             },
           },
-          invoices: invoices.rows.reverse(),
-          bills: bills.rows.reverse(),
-          sales: sales.rows.reverse(),
+          invoices: invoices.rows,
+          bills: bills.rows,
+          sales: sales.rows,
+          purchases: purchases.rows,
         },
       };
     }

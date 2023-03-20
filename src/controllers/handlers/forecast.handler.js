@@ -12,9 +12,12 @@ const {
 
 const InvoiceForecast = db.invoiceForecasts;
 const SaleForecast = db.saleForecasts;
+const PurchaseForecast = db.purchaseForecasts;
 const BillForecast = db.billForecasts;
 const Invoice = db.invoices;
 const Sale = db.sales;
+const Purchase = db.purchases;
+const VendorPayment = db.vendorPayments;
 const Bill = db.bills;
 const InitialBalance = db.initialBalances;
 const BankAccount = db.bankAccounts;
@@ -58,6 +61,16 @@ const resyncHandler = async (req, reply) => {
       },
     });
 
+    await PurchaseForecast.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
     await BillForecast.destroy({
       where: {
         userId: userId,
@@ -88,7 +101,27 @@ const resyncHandler = async (req, reply) => {
       },
     });
 
+    await Purchase.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
     await Bill.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await VendorPayment.destroy({
       where: {
         userId: userId,
         updatedAt: {
@@ -163,8 +196,8 @@ const createOpeningBalanceHandler = async (req, reply) => {
   const TODAY_END = moment().endOf('day').format();
   try {
     let todayOpeningBalData = {
-      yesterday_start: TODAY_START,
-      yesterday_end: TODAY_END,
+      today_start: TODAY_START,
+      today_end: TODAY_END,
     };
     // check if opening balance has been updated today.
     const openingBalance = await getTodayDayOpeningBalance({

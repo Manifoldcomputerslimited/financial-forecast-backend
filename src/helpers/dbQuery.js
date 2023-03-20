@@ -2,15 +2,18 @@ const { Op } = require('sequelize');
 const db = require('../models');
 
 const InvoiceForecast = db.invoiceForecasts;
+const PurchaseForecast = db.purchaseForecasts;
 const SaleForecast = db.saleForecasts;
 const BillForecast = db.billForecasts;
 const ZohoRate = db.zohorates;
+const VendorPayment = db.vendorPayments;
 
 const OpeningBalance = db.openingBalances;
 const BankAccount = db.bankAccounts;
 
 const Invoice = db.invoices;
 const Bill = db.bills;
+const Purchase = db.purchases;
 const Sale = db.sales;
 
 const InitialBalance = db.initialBalances;
@@ -53,6 +56,25 @@ const createBillForecast = async (
   });
 };
 
+const createPurchaseForecast = async (
+  userId,
+  naira,
+  dollar,
+  month,
+  forecastNumber,
+  forecastPeriod,
+  currency
+) => {
+  await PurchaseForecast.create({
+    userId: userId,
+    nairaClosingBalance: naira,
+    dollarClosingBalance: dollar,
+    month: month,
+    forecastType: `${forecastNumber} ${forecastPeriod}`,
+    currency: currency,
+  });
+};
+
 const createSaleForecast = async (
   userId,
   naira,
@@ -80,6 +102,10 @@ const createBill = async ({ payload }) => {
   await Bill.create(payload);
 };
 
+const createPurchase = async ({ payload }) => {
+  await Purchase.create(payload);
+};
+
 const createSale = async ({ payload }) => {
   await Sale.create(payload);
 };
@@ -99,6 +125,19 @@ const fetchAllInvoice = async ({ payload }) => {
 
 const fetchAllBill = async ({ payload }) => {
   return await Bill.findAndCountAll({
+    where: {
+      userId: payload.userId,
+      forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
+      createdAt: {
+        [Op.gt]: payload.today_start,
+        [Op.lt]: payload.today_end,
+      },
+    },
+  });
+};
+
+const fetchAllPurchase = async ({ payload }) => {
+  return await Purchase.findAndCountAll({
     where: {
       userId: payload.userId,
       forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
@@ -162,8 +201,85 @@ const fetchAllBillForecast = async ({ payload }) => {
   });
 };
 
+const fetchAllPurchaseForecast = async ({ payload }) => {
+  return await PurchaseForecast.findAndCountAll({
+    where: {
+      userId: payload.userId,
+      forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
+      createdAt: {
+        [Op.gt]: payload.today_start,
+        [Op.lt]: payload.today_end,
+      },
+    },
+  });
+};
+
 const fetchAllSaleForecast = async ({ payload }) => {
   return await SaleForecast.findAndCountAll({
+    where: {
+      userId: payload.userId,
+      forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
+      createdAt: {
+        [Op.gt]: payload.today_start,
+        [Op.lt]: payload.today_end,
+      },
+    },
+  });
+};
+
+const createVendorPayment = async ({ payload }) => {
+  return await VendorPayment.create(payload);
+};
+
+const updateVendorPaymentByVendorId = async ({
+  updateVendorPaymentPayload,
+}) => {
+  return await VendorPayment.update(
+    { balance: updateVendorPaymentPayload.balance },
+    {
+      where: {
+        vendorId: updateVendorPaymentPayload.vendorId,
+        forecastType: `${updateVendorPaymentPayload.forecastNumber} ${updateVendorPaymentPayload.forecastPeriod}`,
+        createdAt: {
+          [Op.gt]: updateVendorPaymentPayload.today_start,
+          [Op.lt]: updateVendorPaymentPayload.today_end,
+        },
+      },
+    }
+  );
+};
+
+const getVendorPaymentByVendorId = async ({ payload }) => {
+  return await VendorPayment.findOne({
+    where: {
+      userId: payload.userId,
+      vendorId: payload.vendorId,
+      forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
+      currencyCode: payload.currencyCode,
+      createdAt: {
+        [Op.gt]: payload.today_start,
+        [Op.lt]: payload.today_end,
+      },
+    },
+  });
+};
+
+const getPurchaseForecast = async ({ payload }) => {
+  return await PurchaseForecast.findOne({
+    where: {
+      userId: payload.userId,
+      forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
+      currency: payload.currency,
+      createdAt: {
+        [Op.gt]: payload.today_start,
+        [Op.lt]: payload.today_end,
+      },
+    },
+  });
+};
+
+const fetchAllVendorPayments = async ({ payload }) => {
+  return await VendorPayment.findAndCountAll({
     where: {
       userId: payload.userId,
       forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
@@ -187,20 +303,18 @@ const createBankAccounts = async ({ bankAccounts }) => {
   return await BankAccount.create(bankAccounts);
 };
 
-const getTodayDayOpeningBalance = async ({ openingBalData }) => {
+const getTodayDayOpeningBalance = async ({ todayOpeningBalData }) => {
   return await OpeningBalance.findOne({
     where: {
       createdAt: {
-        [Op.gt]: openingBalData.today_start,
-        [Op.lt]: openingBalData.today_end,
+        [Op.gt]: todayOpeningBalData.today_start,
+        [Op.lt]: todayOpeningBalData.today_end,
       },
     },
   });
 };
 
-
 const getPreviousDayOpeningBalance = async ({ prevOpeningBalData }) => {
-  console.log('prev date', prevOpeningBalData);
   return await OpeningBalance.findOne({
     where: {
       createdAt: {
@@ -221,18 +335,27 @@ module.exports = {
   createInvoice,
   createBillForecast,
   createBill,
+  createPurchaseForecast,
+  createPurchase,
   createSaleForecast,
   createSale,
+  createVendorPayment,
   fetchAllInvoice,
   fetchAllBill,
+  fetchAllPurchase,
   fetchAllSale,
   getInitialBalance,
   fetchAllInvoiceForecast,
   fetchAllBillForecast,
+  fetchAllPurchaseForecast,
   fetchAllSaleForecast,
+  fetchAllVendorPayments,
+  getVendorPaymentByVendorId,
+  getPurchaseForecast,
   createInitialBalance,
   createOpeningBalance,
   createBankAccounts,
   getTodayDayOpeningBalance,
   getPreviousDayOpeningBalance,
+  updateVendorPaymentByVendorId,
 };

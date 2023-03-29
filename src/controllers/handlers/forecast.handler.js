@@ -17,6 +17,7 @@ const BillForecast = db.billForecasts;
 const Invoice = db.invoices;
 const Sale = db.sales;
 const Purchase = db.purchases;
+const CustomerPayment = db.customerPayments;
 const VendorPayment = db.vendorPayments;
 const Bill = db.bills;
 const InitialBalance = db.initialBalances;
@@ -112,6 +113,16 @@ const resyncHandler = async (req, reply) => {
     });
 
     await Bill.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await CustomerPayment.destroy({
       where: {
         userId: userId,
         updatedAt: {

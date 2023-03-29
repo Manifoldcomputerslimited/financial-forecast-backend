@@ -15,6 +15,7 @@ const {
   createSale,
   createSaleForecast,
   createVendorPayment,
+  createCustomerPayment,
   getInitialBalance,
   fetchAllInvoiceForecast,
   fetchAllBillForecast,
@@ -25,14 +26,18 @@ const {
   fetchAllPurchase,
   fetchAllSale,
   fetchAllVendorPayments,
+  fetchAllCustomerPayments,
   getPurchaseForecast,
+  getSaleForecast,
   getPreviousDayOpeningBalance,
   getVendorPaymentByVendorId,
-  updateVendorPaymentByVendorId,
+  getCustomerPaymentByCustomerId,
 } = require('../../helpers/dbQuery');
 const db = require('../../models');
 const VendorPayment = db.vendorPayments;
+const CustomerPayment = db.customerPayments;
 const Purchase = db.purchases;
+const Sale = db.sales;
 moment().format();
 
 const getInvoice = async (
@@ -327,6 +332,123 @@ const getBill = async (
   }
 };
 
+const getCustomerPayments = async (
+  zohoAccessToken,
+  forecastNumber,
+  forecastPeriod,
+  rate,
+  userId
+) => {
+  let currency_code;
+  let customerPayments = [];
+  let i = 1;
+  const TODAY_START = moment().startOf('day').format();
+  const TODAY_END = moment().endOf('day').format();
+
+  options = {
+    headers: {
+      'Content-Type': ['application/json'],
+      Authorization: 'Zoho-oauthtoken ' + zohoAccessToken,
+    },
+  };
+
+  do {
+    let url = `${config.ZOHO_BOOK_BASE_URL}/customerpayments?organization_id=${config.ORGANIZATION_ID}&page=${i}`;
+
+    resp = await axios.get(url, options);
+
+    const filteredCustomerPayments = resp.data.customerpayments.filter(
+      (item, index) => {
+        const accountName = item.account_name;
+        const naira = /NGN/;
+        const dollar = /USD/;
+
+        if (accountName.match(naira)) {
+          currency_code = 'NGN';
+        }
+
+        if (accountName.match(dollar)) {
+          currency_code = 'USD';
+        }
+        return (
+          item.unused_amount > 0 &&
+          (currency_code === 'USD' || currency_code === 'NGN')
+        );
+      }
+    );
+
+    filteredCustomerPayments.reduce(async function (a, e) {
+      customerPayments.push(e);
+      return e;
+    }, 0);
+
+    ++i;
+  } while (resp.data.page_context.has_more_page);
+
+  for (i = 0; i < customerPayments.length; i++) {
+    let e = customerPayments[i];
+    const accountName = e.account_name;
+    const ngn = /NGN/;
+    const usd = /USD/;
+    let naira = accountName.match(ngn);
+    let dollar = accountName.match(usd);
+
+    if (accountName.match(naira)) {
+      currency_code = 'NGN';
+    }
+
+    if (accountName.match(dollar)) {
+      currency_code = 'USD';
+    }
+
+    let payload = {
+      customerId: e.customer_id,
+      userId,
+      forecastNumber: forecastNumber,
+      forecastPeriod: forecastPeriod,
+      today_start: TODAY_START,
+      today_end: TODAY_END,
+      currencyCode: currency_code,
+    };
+
+    let customerPayment = await getCustomerPaymentByCustomerId({ payload });
+
+    if (customerPayment) {
+      await customerPayment.update({
+        amount:
+          parseFloat(customerPayment.amount) + parseFloat(e.unused_amount),
+        balance:
+          parseFloat(customerPayment.unused_amount) +
+          parseFloat(e.unused_amount),
+        customerForcastbalance:
+          parseFloat(customerPayment.customerForcastbalance) +
+          parseFloat(e.unused_amount),
+      });
+      continue;
+    }
+
+    payload = {
+      userId,
+      paymentId: e.payment_id,
+      customerId: e.customer_id,
+      customerName: e.customer_name,
+      billNumbers: e.bill_numbers,
+      referenceNumber: e.reference_number,
+      date: e.date,
+      currencyCode: currency_code,
+      amount: e.unused_amount,
+      balance: e.unused_amount,
+      purchaseForcastbalance: e.unused_amount,
+      exchangeRate: e.exchange_rate,
+      forecastType: `${forecastNumber} ${forecastPeriod}`,
+    };
+
+    await createCustomerPayment({
+      payload,
+    });
+  }
+};
+
 const getVendorPayments = async (
   zohoAccessToken,
   forecastNumber,
@@ -545,7 +667,7 @@ const getPurchaseOrder = async (
             (parseFloat(e.total).toFixed(2) / parseFloat(rate.old).toFixed(2)) *
             parseFloat(rate.latest).toFixed(2);
         }
-      
+
         payload = {
           userId,
           purchaseOrderId: e.purchaseorder_id,
@@ -711,10 +833,40 @@ const getSalesOrder = async (
     .endOf(forecastPeriod)
     .format('YYYY-MM-DD');
 
-  // TODO:: only 200 per page what if the page is 1000. A loop needs to be created
-  let url = `${config.ZOHO_BOOK_BASE_URL}/salesorders?organization_id=${config.ORGANIZATION_ID}&shipment_date_start=${startDate}&shipment_date_end=${endDate}&sort_column=shipment_date`;
+  let filteredSales = [];
+  let i = 1;
 
-  resp = await axios.get(url, options);
+  do {
+    let url = `${config.ZOHO_BOOK_BASE_URL}/salesorders?organization_id=${config.ORGANIZATION_ID}&shipment_date_start=${startDate}&shipment_date_end=${endDate}&sort_column=shipment_date`;
+
+    resp = await axios.get(url, options);
+
+    if (
+      Array.isArray(resp.data.saleorders) &&
+      resp.data.saleorders.length > 0
+    ) {
+      const filteredPreviousSales = resp.data.saleorders.filter(
+        (item, index) => item.shipment_date < startDate
+      );
+
+      const filteredCurrentSales = resp.data.saleorders.filter(
+        (item, index) =>
+          item.shipment_date >= startDate && item.shipment_date <= endDate
+      );
+
+      filteredPreviousSales.reduce(async function (a, e) {
+        e.shipment_date = startDate;
+        filteredSales.push(e);
+        return e;
+      }, 0);
+
+      filteredCurrentSales.reduce(async function (a, e) {
+        filteredSales.push(e);
+        return e;
+      }, 0);
+    }
+    ++i;
+  } while (!resp.data.salesorders.length);
 
   for (i = 0; i < forecastNumber; i++) {
     startDate = date
@@ -734,8 +886,7 @@ const getSalesOrder = async (
         item.shipment_date <= endDate &&
         (item.status == 'open' ||
           item.status == 'overdue' ||
-          item.status == 'partially_invoiced' ||
-          item.status == 'draft')
+          item.status == 'partially_invoiced')
     );
 
     dollarClosingBalance = filteredSales.reduce(function (acc, obj) {
@@ -745,11 +896,15 @@ const getSalesOrder = async (
     }, 0);
 
     nairaClosingBalance = filteredSales.reduce(function (acc, obj) {
-      total =
-        obj.currency_code === 'NGN' ? obj.total : obj.total * rate.lastest;
+      balance =
+        obj.currency_code === 'NGN'
+          ? obj.total
+          : obj.total * parseFloat(rate.lastest).toFixed(2);
 
       if (rate.old !== rate.latest) {
-        balance = (balance / rate.old) * rate.latest;
+        balance =
+          (balance / parseFloat(rate.old).toFixed(2)) *
+          parseFloat(rate.latest).toFixed(2);
       }
 
       return acc + total;
@@ -767,8 +922,8 @@ const getSalesOrder = async (
 
     await createSaleForecast(
       userId,
-      dollarClosingBalance * rate.latest,
-      dollarClosingBalance,
+      0.0,
+      parseFloat(dollarClosingBalance).toFixed(2),
       startDate,
       forecastNumber,
       forecastPeriod,
@@ -777,24 +932,35 @@ const getSalesOrder = async (
 
     filteredSales.reduce(async function (a, e) {
       if (parseFloat(e.total) > 0) {
-        if (rate.old !== rate.latest && e.currency_code === 'NGN') {
-          e.total = (e.total / rate.old) * rate.latest;
+        if (
+          parseFloat(rate.old).toFixed(2) !==
+            parseFloat(rate.latest).toFixed(2) &&
+          e.currency_code === 'NGN'
+        ) {
+          e.total =
+            (parseFloat(e.total).toFixed(2) / parseFloat(rate.old).toFixed(2)) *
+            parseFloat(rate.latest).toFixed(2);
         }
 
         const payload = {
           userId,
           saleOrderId: e.salesorder_id,
-          customerName: e.customer_id,
+          customerId: e.customer_id,
+          customerName: e.customer_name,
           status: e.status,
           salesOrderNumber: e.salesorder_number,
           refrenceNumber: e.reference_number,
           date: e.date,
           shipmentDate: e.shipment_date,
           currencyCode: e.currency_code,
-          balance: e.total,
-          naira: e.currency_code === 'NGN' ? e.total : e.balance * rate.latest,
+          total: e.total,
+          naira:
+            e.currency_code === 'NGN'
+              ? e.total
+              : e.total * parseFloat(rate.latest).toFixed(2),
           dollar: e.currency_code === 'USD' ? e.total : 0.0,
-          exchangeRate: e.exchange_rate,
+          balance: e.total,
+          exchangeRate: parseFloat(rate.latest).toFixed(2),
           forecastType: `${forecastNumber} ${forecastPeriod}`,
         };
 
@@ -804,6 +970,121 @@ const getSalesOrder = async (
       return;
     }, 0);
   }
+};
+
+const processSales = async (
+  sales,
+  customerPayments,
+  userId,
+  forecastNumber,
+  forecastPeriod
+) => {
+  const TODAY_START = moment().startOf('day').format();
+  const TODAY_END = moment().endOf('day').format();
+  console.log('process sales');
+  let nairaBalance = 0;
+  let dollarBalance = 0;
+
+  for (i = 0; i < sales.count; i++) {
+    for (j = 0; j < customerPayments.count; j++) {
+      let sale = sales.rows[i];
+      let payment = customerPayments.rows[j];
+
+      if (
+        sale.customerId == payment.customerId &&
+        sale.currencyCode == payment.currencyCode
+      ) {
+        let paymentRecievedBalance = 0;
+        let total = 0;
+
+        let saleRecieved = parseFloat(sale.total);
+        let customerPayment = await CustomerPayment.findOne({
+          where: {
+            customerId: payment.customerId,
+          },
+        });
+        let paymentRecieved = parseFloat(customerPayment.balance);
+        if (paymentRecieved >= saleRecieved) {
+          paymentRecievedBalance = paymentRecieved - saleRecieved;
+          dollarBalance =
+            payment.currencyCode == 'USD'
+              ? dollarBalance + saleRecieved
+              : dollarBalance;
+          nairaBalance =
+            payment.currencyCode == 'NGN'
+              ? nairaBalance + saleRecieved
+              : nairaBalance;
+        } else {
+          total = saleRecieved - paymentRecieved;
+
+          dollarBalance =
+            payment.currencyCode == 'USD'
+              ? dollarBalance + paymentRecieved
+              : dollarBalance;
+          nairaBalance =
+            payment.currencyCode == 'NGN'
+              ? nairaBalance + paymentRecieved
+              : nairaBalance;
+        }
+        await CustomerPayment.update(
+          {
+            balance: paymentRecievedBalance,
+          },
+          {
+            where: {
+              customerId: payment.customerId,
+            },
+          }
+        );
+
+        await Sale.update(
+          {
+            balance: total,
+          },
+          {
+            where: {
+              customerId: payment.customerId,
+              saleOrderId: sale.saleOrderId,
+            },
+          }
+        );
+      }
+    }
+  }
+
+  let payload = {
+    userId: userId,
+    forecastNumber: forecastNumber,
+    forecastPeriod: forecastPeriod,
+    currency: 'NGN',
+    today_start: TODAY_START,
+    today_end: TODAY_END,
+  };
+
+  let saleNairaForecast = await getSaleForecast({ payload });
+
+  await saleNairaForecast.update({
+    nairaClosingBalance:
+      parseFloat(saleNairaForecast.nairaClosingBalance) -
+      parseFloat(nairaBalance),
+  });
+
+  payload = {
+    userId: userId,
+    forecastNumber: forecastNumber,
+    forecastPeriod: forecastPeriod,
+    currency: 'USD',
+    today_start: TODAY_START,
+    today_end: TODAY_END,
+  };
+
+  let saleDollarForecast = await getSaleForecast({ payload });
+
+  await saleDollarForecast.update({
+    dollarClosingBalance:
+      parseFloat(saleDollarForecast.dollarClosingBalance) -
+      parseFloat(dollarBalance),
+  });
 };
 
 const generateReportHandler = async (req, reply) => {
@@ -908,6 +1189,8 @@ const generateReportHandler = async (req, reply) => {
       initialOpeningBalance = await getInitialBalance({ payload });
     }
 
+    let customerPayments = await fetchAllCustomerPayments({ payload });
+
     let vendorPayments = await fetchAllVendorPayments({ payload });
 
     let invoices = await fetchAllInvoice({ payload });
@@ -934,8 +1217,17 @@ const generateReportHandler = async (req, reply) => {
       !bills.count &&
       !invoices.count &&
       !purchases.count &&
+      !customerPayments.count &&
       !vendorPayments.count
     ) {
+      await getCustomerPayments(
+        zohoAccessToken,
+        forecastNumber,
+        forecastPeriod,
+        rate,
+        userId
+      );
+
       await getVendorPayments(
         zohoAccessToken,
         forecastNumber,
@@ -964,6 +1256,8 @@ const generateReportHandler = async (req, reply) => {
 
       await getBill(options, forecastNumber, forecastPeriod, rate, userId);
 
+      customerPayments = await fetchAllCustomerPayments({ payload });
+
       vendorPayments = await fetchAllVendorPayments({ payload });
 
       purchases = await fetchAllPurchase({ payload });
@@ -982,6 +1276,14 @@ const generateReportHandler = async (req, reply) => {
       invoiceForecasts = await fetchAllInvoiceForecast({ payload });
 
       billForecasts = await fetchAllBillForecast({ payload });
+
+      await processSales(
+        sales,
+        customerPayments,
+        userId,
+        forecastNumber,
+        forecastPeriod
+      );
 
       await processPurchases(
         purchases,
@@ -1433,6 +1735,8 @@ const generateReportHandler = async (req, reply) => {
           bills: bills.rows,
           sales: sales.rows,
           purchases: purchases.rows,
+          customerPayments: customerPayments.rows,
+          vendorPayments: vendorPayments.rows,
         },
       };
     }

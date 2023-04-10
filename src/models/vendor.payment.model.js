@@ -1,18 +1,15 @@
 module.exports = (sequelize, DataTypes) => {
-  const Sale = sequelize.define('sale', {
-    saleOrderId: {
+  const VendorPayment = sequelize.define('vendorPayment', {
+    paymentId: {
       type: DataTypes.STRING,
     },
-    customerId: {
+    vendorId: {
       type: DataTypes.STRING,
     },
-    customerName: {
+    vendorName: {
       type: DataTypes.STRING,
     },
-    status: {
-      type: DataTypes.STRING,
-    },
-    salesOrderNumber: {
+    billNumbers: {
       type: DataTypes.STRING,
     },
     refrenceNumber: {
@@ -21,26 +18,19 @@ module.exports = (sequelize, DataTypes) => {
     date: {
       type: DataTypes.STRING,
     },
-    shipmentDate: {
-      type: DataTypes.STRING,
-    },
     currencyCode: {
       type: DataTypes.STRING,
     },
-    total: {
+    amount: {
       type: DataTypes.DECIMAL(12, 2),
       defaultValue: 0.0,
     },
-    naira: {
-      type: DataTypes.DECIMAL(12, 2),
-      defaultValue: 0.0,
-    },
-    dollar: {
-      type: DataTypes.DECIMAL(12, 2),
-      defaultValue: 0.0,
-    },
-    // Amount after deducting from payment made
+    // Amount after deducting from purchase order
     balance: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0.0,
+    },
+    purchaseForcastbalance: {
       type: DataTypes.DECIMAL(12, 2),
       defaultValue: 0.0,
     },
@@ -57,5 +47,5 @@ module.exports = (sequelize, DataTypes) => {
     },
   });
 
-  return Sale;
+  return VendorPayment;
 };

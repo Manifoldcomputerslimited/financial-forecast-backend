@@ -1955,37 +1955,88 @@ const generateReportHandler = async (req, reply) => {
       statusCode = 200;
       result = await workbook.xlsx.writeBuffer();
     } else {
-      let totalNairaCashInflow = 0.0;
-      let totalDollarCashInflow = 0.0;
-      let totalNairaCashOutflow = 0.0;
-      let totalDollarCashOutflow = 0.0;
+      let totalInvoiceNairaCashInflow = 0.0;
+      let totalInvoiceDollarCashInflow = 0.0;
+      let totalSaleNairaCashInflow = 0.0;
+      let totalSaleDollarCashInflow = 0.0;
+
+      let totalBillNairaCashOutflow = 0.0;
+      let totalBillDollarCashOutflow = 0.0;
+      let totalPurchaseNairaCashOutflow = 0.0;
+      let totalPurchaseDollarCashOutflow = 0.0;
 
       for (const [rowNum, inputData] of invoiceForecasts.rows.entries()) {
         if (invoiceForecasts.rows[rowNum].currency === 'NGN') {
-          totalNairaCashInflow += parseFloat(inputData.nairaClosingBalance);
+          totalInvoiceNairaCashInflow += parseFloat(
+            inputData.nairaClosingBalance
+          );
         } else {
-          totalDollarCashInflow += parseFloat(inputData.dollarClosingBalance);
+          totalInvoiceDollarCashInflow += parseFloat(
+            inputData.dollarClosingBalance
+          );
+        }
+      }
+
+      for (const [rowNum, inputData] of saleForecasts.rows.entries()) {
+        if (saleForecasts.rows[rowNum].currency === 'NGN') {
+          totalSaleNairaCashInflow += parseFloat(inputData.nairaClosingBalance);
+        } else {
+          totalSaleDollarCashInflow += parseFloat(
+            inputData.dollarClosingBalance
+          );
         }
       }
 
       for (const [rowNum, inputData] of billForecasts.rows.entries()) {
         if (billForecasts.rows[rowNum].currency === 'NGN') {
-          totalNairaCashOutflow += parseFloat(inputData.nairaClosingBalance);
+          totalBillNairaCashOutflow += parseFloat(
+            inputData.nairaClosingBalance
+          );
         } else {
-          totalDollarCashOutflow += parseFloat(inputData.dollarClosingBalance);
+          totalBillDollarCashOutflow += parseFloat(
+            inputData.dollarClosingBalance
+          );
         }
       }
+
+      for (const [rowNum, inputData] of purchaseForecasts.rows.entries()) {
+        if (purchaseForecasts.rows[rowNum].currency === 'NGN') {
+          totalPurchaseNairaCashOutflow += parseFloat(
+            inputData.nairaClosingBalance
+          );
+        } else {
+          totalPurchaseDollarCashOutflow += parseFloat(
+            inputData.dollarClosingBalance
+          );
+        }
+      }
+
+      let totalNairaInflow =
+        parseFloat(totalInvoiceNairaCashInflow) +
+        parseFloat(totalSaleNairaCashInflow);
+
+      let totalDollarInflow =
+        parseFloat(totalInvoiceDollarCashInflow) +
+        parseFloat(totalSaleDollarCashInflow);
+
+      let totalNairaOutflow =
+        parseFloat(totalBillNairaCashOutflow) +
+        parseFloat(totalPurchaseNairaCashOutflow);
+
+      let totalDollarOutflow =
+        parseFloat(totalBillDollarCashOutflow) +
+        parseFloat(totalPurchaseDollarCashOutflow);
 
       // nairaNetWorkingCapital
       let totalNairaNetWorkingCapital =
         parseFloat(initialOpeningBalance.openingBalance) +
-        parseFloat(totalNairaCashInflow) -
-        parseFloat(totalNairaCashOutflow);
+        totalNairaInflow -
+        totalNairaOutflow;
       // dollarNetWorkingCapital
       let totalDollarNetWorkingCapital =
-        parseFloat(initialOpeningBalance.dollarOpeningBalance) +
-        parseFloat(totalDollarCashInflow) -
-        parseFloat(totalDollarCashOutflow);
+        parseFloat(initialOpeningBalance.openingBalance) +
+        totalDollarInflow -
+        totalDollarOutflow;
 
       statusCode = 200;
       result = {
@@ -1998,12 +2049,12 @@ const generateReportHandler = async (req, reply) => {
               dollar: initialOpeningBalance.dollarOpeningBalance,
             },
             totalCashInflow: {
-              naira: totalNairaCashInflow,
-              dollar: totalDollarCashInflow,
+              naira: totalNairaInflow,
+              dollar: totalDollarInflow,
             },
             totalCashOutflow: {
-              naira: totalNairaCashOutflow,
-              dollar: totalDollarCashOutflow,
+              naira: totalNairaOutflow,
+              dollar: totalDollarOutflow,
             },
             closingBalance: {
               naira: totalNairaNetWorkingCapital,

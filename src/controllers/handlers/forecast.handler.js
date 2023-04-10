@@ -331,8 +331,6 @@ const createOpeningBalanceHandler = async (req, reply) => {
       data: '',
     };
   } catch (e) {
-    console.log(e);
-    statusCode = e.response.status;
     result = {
       status: false,
       message: e.response.data.message,

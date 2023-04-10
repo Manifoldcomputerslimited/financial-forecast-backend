@@ -1506,11 +1506,10 @@ const generateReportHandler = async (req, reply) => {
 
       let cashOutflow;
       let cashOutflowFromPurchase;
-      let totalCashOutflowFromPurchase;
 
       let endOfInvoice = (await invoices.count) + 7;
       let endOfSale = endOfInvoice + (await sales.count) + 2;
-      let endOfBill = (await bills.count) + endOfSale + 3;
+      let endOfBill = (await bills.count) + endOfSale + 4;
       let endOfPurchase = (await purchases.count) + endOfBill + 2;
 
       for (const [rowNum, inputData] of invoices.rows.entries()) {

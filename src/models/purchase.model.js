@@ -1,18 +1,18 @@
 module.exports = (sequelize, DataTypes) => {
-  const Sale = sequelize.define('sale', {
-    saleOrderId: {
+  const Purchase = sequelize.define('purchase', {
+    purchaseOrderId: {
       type: DataTypes.STRING,
     },
-    customerId: {
+    vendorId: {
       type: DataTypes.STRING,
     },
-    customerName: {
+    vendorName: {
       type: DataTypes.STRING,
     },
     status: {
       type: DataTypes.STRING,
     },
-    salesOrderNumber: {
+    purchaseOrderNumber: {
       type: DataTypes.STRING,
     },
     refrenceNumber: {
@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
     date: {
       type: DataTypes.STRING,
     },
-    shipmentDate: {
+    deliveryDate: {
       type: DataTypes.STRING,
     },
     currencyCode: {
@@ -57,5 +57,5 @@ module.exports = (sequelize, DataTypes) => {
     },
   });
 
-  return Sale;
+  return Purchase;
 };

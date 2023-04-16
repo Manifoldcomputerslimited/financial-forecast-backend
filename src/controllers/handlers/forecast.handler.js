@@ -12,9 +12,13 @@ const {
 
 const InvoiceForecast = db.invoiceForecasts;
 const SaleForecast = db.saleForecasts;
+const PurchaseForecast = db.purchaseForecasts;
 const BillForecast = db.billForecasts;
 const Invoice = db.invoices;
 const Sale = db.sales;
+const Purchase = db.purchases;
+const CustomerPayment = db.customerPayments;
+const VendorPayment = db.vendorPayments;
 const Bill = db.bills;
 const InitialBalance = db.initialBalances;
 const BankAccount = db.bankAccounts;
@@ -58,6 +62,16 @@ const resyncHandler = async (req, reply) => {
       },
     });
 
+    await PurchaseForecast.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
     await BillForecast.destroy({
       where: {
         userId: userId,
@@ -88,7 +102,37 @@ const resyncHandler = async (req, reply) => {
       },
     });
 
+    await Purchase.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
     await Bill.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await CustomerPayment.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await VendorPayment.destroy({
       where: {
         userId: userId,
         updatedAt: {
@@ -162,7 +206,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
   const TODAY_START = moment().startOf('day').format();
   const TODAY_END = moment().endOf('day').format();
   try {
-    let openingBalData = {
+    let todayOpeningBalData = {
       today_start: TODAY_START,
       today_end: TODAY_END,
     };
@@ -287,8 +331,6 @@ const createOpeningBalanceHandler = async (req, reply) => {
       data: '',
     };
   } catch (e) {
-    console.log(e);
-    statusCode = e.response.status;
     result = {
       status: false,
       message: e.response.data.message,

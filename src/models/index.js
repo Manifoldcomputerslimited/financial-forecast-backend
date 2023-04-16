@@ -35,11 +35,18 @@ db.rates = require('./rate.model')(sequelize, Sequelize);
 db.zohorates = require('./zoho.rate.model')(sequelize, Sequelize);
 db.invoices = require('./invoice.model')(sequelize, Sequelize);
 db.invoiceForecasts = require('./invoice.forecast.model')(sequelize, Sequelize);
+db.purchases = require('./purchase.model')(sequelize, Sequelize);
+db.purchaseForecasts = require('./purchase.forecast.model')(
+  sequelize,
+  Sequelize
+);
 db.sales = require('./sale.model')(sequelize, Sequelize);
 db.saleForecasts = require('./sale.forecast.model')(sequelize, Sequelize);
 db.bills = require('./bill.model')(sequelize, Sequelize);
 db.billForecasts = require('./bill.forecast.model')(sequelize, Sequelize);
 db.initialBalances = require('./initial.balance.model')(sequelize, Sequelize);
+db.customerPayments = require('./customer.payment.model')(sequelize, Sequelize);
+db.vendorPayments = require('./vendor.payment.model')(sequelize, Sequelize);
 db.openingBalances = require('./opening.balance.model')(sequelize, Sequelize);
 db.bankAccounts = require('./bank.account.model')(sequelize, Sequelize);
 db.overdrafts = require('./overdraft.model')(sequelize, Sequelize);

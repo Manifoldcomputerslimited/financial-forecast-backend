@@ -232,7 +232,7 @@ const getPurchaseForecast = async ({ payload }) => {
   return await PurchaseForecast.findOne({
     where: {
       userId: payload.userId,
-      forecastType: `${payload.forecastNumber} ${payload.forecastPeriod}`,
+      forecastType: payload.forecastType,
       currency: payload.currency,
       createdAt: {
         [Op.gt]: payload.today_start,

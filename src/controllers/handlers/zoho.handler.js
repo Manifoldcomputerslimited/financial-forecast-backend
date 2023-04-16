@@ -76,6 +76,7 @@ const getInvoice = async (
       const filteredPreviousInvoices = resp.data.invoices.filter(
         (item, index) =>
           item.due_date < startDate &&
+          (item.currency_code == 'NGN' || item.currency_code == 'USD') &&
           (item.status == 'sent' ||
             item.status == 'overdue' ||
             item.status == 'partially_paid' ||
@@ -86,6 +87,7 @@ const getInvoice = async (
         (item, index) =>
           item.due_date >= startDate &&
           item.due_date <= endDate &&
+          (item.currency_code == 'NGN' || item.currency_code == 'USD') &&
           (item.status == 'sent' ||
             item.status == 'overdue' ||
             item.status == 'partially_paid' ||
@@ -257,6 +259,7 @@ const getBill = async (
       (item, index) =>
         item.due_date >= startDate &&
         item.due_date <= endDate &&
+        (item.currency_code == 'NGN' || item.currency_code == 'USD') &&
         (item.status == 'open' ||
           item.status == 'overdue' ||
           item.status == 'partially_paid')
@@ -438,7 +441,7 @@ const getCustomerPayments = async (
       currencyCode: currency_code,
       amount: e.unused_amount,
       balance: e.unused_amount,
-      purchaseForcastbalance: e.unused_amount,
+      saleForcastbalance: e.unused_amount,
       exchangeRate: e.exchange_rate,
       forecastType: `${forecastNumber} ${forecastPeriod}`,
     };
@@ -742,6 +745,29 @@ const processPurchases = async (
             payment.currencyCode == 'NGN'
               ? nairaBalance + purchaseMade
               : nairaBalance;
+
+          let payload = {
+            userId: userId,
+            forecastType: purchase.forecastType,
+            currency: payment.currencyCode == 'NGN' ? 'NGN' : 'USD',
+            today_start: TODAY_START,
+            today_end: TODAY_END,
+          };
+
+          let purchaseForecast = await getPurchaseForecast({ payload });
+
+          await purchaseForecast.update({
+            nairaClosingBalance:
+              payment.currencyCode == 'NGN'
+                ? parseFloat(purchaseForecast.nairaClosingBalance) -
+                  parseFloat(purchaseMade)
+                : parseFloat(purchaseForecast.nairaClosingBalance),
+            dollarClosingBalance:
+              payment.currencyCode == 'USD'
+                ? parseFloat(purchaseForecast.dollarClosingBalance) -
+                  parseFloat(purchaseMade)
+                : parseFloat(purchaseForecast.dollarClosingBalance),
+          });
         } else {
           total = purchaseMade - paymentMade;
 
@@ -753,6 +779,28 @@ const processPurchases = async (
             payment.currencyCode == 'NGN'
               ? nairaBalance + paymentMade
               : nairaBalance;
+          let payload = {
+            userId: userId,
+            forecastType: purchase.forecastType,
+            currency: payment.currencyCode == 'NGN' ? 'NGN' : 'USD',
+            today_start: TODAY_START,
+            today_end: TODAY_END,
+          };
+
+          let purchaseForecast = await getPurchaseForecast({ payload });
+
+          await purchaseForecast.update({
+            nairaClosingBalance:
+              payment.currencyCode == 'NGN'
+                ? parseFloat(purchaseForecast.nairaClosingBalance) -
+                  parseFloat(purchaseMade)
+                : parseFloat(purchaseForecast.nairaClosingBalance),
+            dollarClosingBalance:
+              payment.currencyCode == 'USD'
+                ? parseFloat(purchaseForecast.dollarClosingBalance) -
+                  parseFloat(purchaseMade)
+                : parseFloat(purchaseForecast.dollarClosingBalance),
+          });
         }
         await VendorPayment.update(
           {
@@ -780,39 +828,6 @@ const processPurchases = async (
     }
   }
 
-  let payload = {
-    userId: userId,
-    forecastNumber: forecastNumber,
-    forecastPeriod: forecastPeriod,
-    currency: 'NGN',
-    today_start: TODAY_START,
-    today_end: TODAY_END,
-  };
-
-  let purchaseNairaForecast = await getPurchaseForecast({ payload });
-
-  await purchaseNairaForecast.update({
-    nairaClosingBalance:
-      parseFloat(purchaseNairaForecast.nairaClosingBalance) -
-      parseFloat(nairaBalance),
-  });
-
-  payload = {
-    userId: userId,
-    forecastNumber: forecastNumber,
-    forecastPeriod: forecastPeriod,
-    currency: 'USD',
-    today_start: TODAY_START,
-    today_end: TODAY_END,
-  };
-
-  let purchaseDollarForecast = await getPurchaseForecast({ payload });
-
-  await purchaseDollarForecast.update({
-    dollarClosingBalance:
-      parseFloat(purchaseDollarForecast.dollarClosingBalance) -
-      parseFloat(dollarBalance),
-  });
 };
 
 const getSalesOrder = async (

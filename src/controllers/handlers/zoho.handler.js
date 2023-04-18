@@ -564,13 +564,10 @@ const getPurchaseOrder = async (
   let payload;
 
   do {
-    // let url = `${config.ZOHO_BOOK_BASE_URL}/purchaseorders?organization_id=${config.ORGANIZATION_ID}&filter_by=Status.Open&sort_column=delivery_date&page=${i}`;
-
     let url = `${config.ZOHO_BOOK_BASE_URL}/purchaseorders?organization_id=${config.ORGANIZATION_ID}&delivery_date_end=${endDate}&sort_column=delivery_date&page=${i}`;
 
     resp = await axios.get(url, options);
 
-    //console.log(resp.data.purchaseorders);
 
     if (
       Array.isArray(resp.data.purchaseorders) &&
@@ -827,7 +824,6 @@ const processPurchases = async (
       }
     }
   }
-
 };
 
 const getSalesOrder = async (
@@ -895,7 +891,6 @@ const getSalesOrder = async (
     ++i;
   } while (!resp.data.salesorders.length);
 
-  // console.log(filteredSales);
   for (i = 0; i < forecastNumber; i++) {
     startDate = date
       .clone()
@@ -917,17 +912,14 @@ const getSalesOrder = async (
           item.status == 'partially_invoiced')
     );
 
-    console.log('filtered sales', newFilteredSales);
 
     dollarClosingBalance = newFilteredSales.reduce(function (acc, obj) {
       balance = obj.currency_code === 'USD' ? obj.total : 0.0;
 
       return acc + balance;
     }, 0);
-    // console.log(newFilteredSales);
 
     nairaClosingBalance = newFilteredSales.reduce(function (acc, obj) {
-      // console.log(obj.total);
 
       balance =
         obj.currency_code === 'NGN'
@@ -1014,7 +1006,6 @@ const processSales = async (
 ) => {
   const TODAY_START = moment().startOf('day').format();
   const TODAY_END = moment().endOf('day').format();
-  console.log('process sales');
   let nairaBalance = 0;
   let dollarBalance = 0;
 
@@ -2086,7 +2077,6 @@ const generateReportHandler = async (req, reply) => {
       };
     }
   } catch (e) {
-    console.log(e);
     statusCode = e.response.status;
     result = {
       status: false,

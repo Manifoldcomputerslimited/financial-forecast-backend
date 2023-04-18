@@ -333,6 +333,7 @@ const createBankAccounts = async ({ bankAccounts }) => {
 };
 
 const getTodayDayOpeningBalance = async ({ todayOpeningBalData }) => {
+  console.log('today', todayOpeningBalData);
   return await OpeningBalance.findOne({
     where: {
       createdAt: {
@@ -344,6 +345,7 @@ const getTodayDayOpeningBalance = async ({ todayOpeningBalData }) => {
 };
 
 const getPreviousDayOpeningBalance = async ({ prevOpeningBalData }) => {
+  console.log('prev', prevOpeningBalData);
   return await OpeningBalance.findOne({
     where: {
       createdAt: {

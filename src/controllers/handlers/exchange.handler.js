@@ -7,10 +7,16 @@ const User = db.users;
 const Rate = db.rates;
 const BillForecast = db.billForecasts;
 const InvoiceForecast = db.invoiceForecasts;
+const SaleForecast = db.saleForecasts;
+const PurchaseForecast = db.purchaseForecasts;
 const Invoice = db.invoices;
 const ZohoRate = db.zohorates;
 const Bill = db.bills;
 const InitialBalance = db.initialBalances;
+const Sale = db.sales;
+const Purchase = db.purchases;
+const CustomerPayment = db.customerPayments;
+const VendorPayment = db.vendorPayments;
 
 // Get exchange rate and save into database
 const getZohoExchangeRateHandler = async (
@@ -197,6 +203,27 @@ const updateExchangeRateHandler = async (req, reply) => {
       },
     });
 
+    await SaleForecast.destroy({
+      where: {
+        userId: userId,
+        forecastType: `${forecastNumber} ${forecastPeriod}`,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await PurchaseForecast.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
     await Bill.destroy({
       where: {
         userId: userId,
@@ -212,6 +239,46 @@ const updateExchangeRateHandler = async (req, reply) => {
       where: {
         userId: userId,
         forecastType: `${forecastNumber} ${forecastPeriod}`,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await Sale.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await Purchase.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await CustomerPayment.destroy({
+      where: {
+        userId: userId,
+        updatedAt: {
+          [Op.gt]: TODAY_START,
+          [Op.lt]: TODAY_END,
+        },
+      },
+    });
+
+    await VendorPayment.destroy({
+      where: {
+        userId: userId,
         updatedAt: {
           [Op.gt]: TODAY_START,
           [Op.lt]: TODAY_END,

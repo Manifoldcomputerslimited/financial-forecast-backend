@@ -1130,7 +1130,11 @@ const generateReportHandler = async (req, reply) => {
     const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
     const TODAY_START = moment().startOf('day').format();
     const TODAY_END = moment().endOf('day').format();
-
+    
+    console.log("yesterday start date", YESTERDAY_START);
+    console.log("yesterday end datae", YESTERDAY_END);
+    console.log("today start", TODAY_START);
+    console.log("today end", TODAY_END);
     let previousDayOpeningBalance;
 
     const userId = req.user.id;

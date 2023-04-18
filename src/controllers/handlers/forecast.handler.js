@@ -212,7 +212,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
     };
     // check if opening balance has been updated today.
     const openingBalance = await getTodayDayOpeningBalance({
-      openingBalData,
+      todayOpeningBalData,
     });
 
     if (openingBalance) {

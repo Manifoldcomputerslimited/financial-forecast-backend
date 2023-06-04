@@ -1,8 +1,8 @@
-const { default: axios } = require('axios');
-const db = require('../../models');
-const config = require('../../../config');
-const { Op } = require('sequelize');
-let moment = require('moment');
+const { default: axios } = require("axios");
+const ExcelJS = require("exceljs");
+const db = require("../../models");
+const config = require("../../../config");
+const { Op } = require("sequelize");
 const User = db.users;
 const Rate = db.rates;
 const BillForecast = db.billForecasts;
@@ -31,8 +31,8 @@ const getZohoExchangeRateHandler = async (
 
   const options = {
     headers: {
-      'Content-Type': ['application/json'],
-      Authorization: 'Bearer ' + zohoAccessToken,
+      "Content-Type": ["application/json"],
+      Authorization: "Bearer " + zohoAccessToken,
     },
   };
 
@@ -58,7 +58,7 @@ const getZohoExchangeRateHandler = async (
     if (res.data.error)
       return reply.code(400).send({
         status: false,
-        message: 'Could not fetch exchange rate',
+        message: "Could not fetch exchange rate",
       });
 
     // save to db
@@ -83,7 +83,7 @@ const getExchangeRateHandler = async (req, reply) => {
     let rate = await Rate.findOne({
       where: {
         userId,
-        forecastType: number + ' ' + period,
+        forecastType: number + " " + period,
         updatedAt: {
           [Op.gt]: TODAY_START,
           [Op.lt]: TODAY_END,
@@ -94,7 +94,7 @@ const getExchangeRateHandler = async (req, reply) => {
     if (!rate) {
       return reply.code(400).send({
         status: false,
-        message: 'Could not fetch exchange rate',
+        message: "Could not fetch exchange rate",
       });
     }
 
@@ -102,7 +102,7 @@ const getExchangeRateHandler = async (req, reply) => {
 
     result = {
       status: true,
-      message: 'Exchange rate fetched successfully',
+      message: "Exchange rate fetched successfully",
       data: rate,
     };
   } catch (e) {
@@ -120,14 +120,14 @@ const getAllExchangeRateHandler = async (req, reply) => {
   try {
     const zohorates = await ZohoRate.findAll({
       limit: 30,
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
     });
 
     statusCode = 200;
 
     result = {
       status: true,
-      message: 'Exchage rates fetched successfully',
+      message: "Exchage rates fetched successfully",
       data: zohorates,
     };
   } catch (e) {
@@ -138,6 +138,39 @@ const getAllExchangeRateHandler = async (req, reply) => {
     };
   }
 
+  return reply.status(statusCode).send(result);
+};
+
+const downloadExchangeRate = async (req, reply) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Exchange Rate List");
+
+    const exchangeRateColumns = [
+      { key: "id", header: "id" },
+      { key: "rate", header: "rate" },
+      { key: "createdAt", header: "date" },
+    ];
+
+    worksheet.columns = exchangeRateColumns;
+
+    const zohorates = await ZohoRate.findAll({
+      order: [["createdAt", "DESC"]],
+    });
+
+    zohorates.forEach((rate) => {
+      worksheet.addRow(rate);
+    });
+
+    result = await workbook.xlsx.writeBuffer();
+    statusCode = 200;
+  } catch (e) {
+    statusCode = e.response.status;
+    result = {
+      status: false,
+      message: e.response.data.message,
+    };
+  }
   return reply.status(statusCode).send(result);
 };
 
@@ -161,7 +194,7 @@ const updateExchangeRateHandler = async (req, reply) => {
     if (!rate) {
       return reply.code(400).send({
         status: false,
-        message: 'Could not fetch exchange rate',
+        message: "Could not fetch exchange rate",
       });
     }
 
@@ -290,7 +323,7 @@ const updateExchangeRateHandler = async (req, reply) => {
 
     result = {
       status: true,
-      message: 'Exchange rate updated successfully',
+      message: "Exchange rate updated successfully",
       data: rate,
     };
   } catch (e) {
@@ -309,4 +342,5 @@ module.exports = {
   getAllExchangeRateHandler,
   getZohoExchangeRateHandler,
   updateExchangeRateHandler,
+  downloadExchangeRate,
 };

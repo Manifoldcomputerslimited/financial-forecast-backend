@@ -2081,7 +2081,6 @@ const generateReportHandler = async (req, reply) => {
       };
     }
   } catch (e) {
-    console.log(e);
     statusCode = e.response.status;
     result = {
       status: false,

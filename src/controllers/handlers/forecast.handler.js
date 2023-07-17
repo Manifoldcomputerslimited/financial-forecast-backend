@@ -1,14 +1,15 @@
-const { default: axios } = require('axios');
-const db = require('../../models');
-const { Op } = require('sequelize');
-let moment = require('moment');
-const config = require('../../../config');
+const { default: axios } = require("axios");
+const ExcelJS = require("exceljs");
+const db = require("../../models");
+const { Op } = require("sequelize");
+let moment = require("moment");
+const config = require("../../../config");
 const {
   createZohoRate,
   createOpeningBalance,
   createBankAccounts,
   getTodayDayOpeningBalance,
-} = require('../../helpers/dbQuery');
+} = require("../../helpers/dbQuery");
 
 const InvoiceForecast = db.invoiceForecasts;
 const SaleForecast = db.saleForecasts;
@@ -27,8 +28,8 @@ const Overdraft = db.overdrafts;
 const OpeningBalance = db.openingBalances;
 
 const resyncHandler = async (req, reply) => {
-  const TODAY_START = moment().startOf('day').format();
-  const TODAY_END = moment().endOf('day').format();
+  const TODAY_START = moment().startOf("day").format();
+  const TODAY_END = moment().endOf("day").format();
   try {
     const userId = req.user.id;
 
@@ -156,7 +157,7 @@ const resyncHandler = async (req, reply) => {
 
     result = {
       status: true,
-      message: 'Resynced successfully',
+      message: "Resynced successfully",
     };
   } catch (e) {
     statusCode = e.code;
@@ -200,11 +201,53 @@ const bankAccountsHandler = async (req, reply) => {
   return reply.status(statusCode).send(result);
 };
 
+const downloadOpeningBalance = async (req, reply) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Opening Balance");
+    const YESTERDAY_START = moment().subtract(1, "days").startOf("day").format();
+  const YESTERDAY_END = moment().subtract(1, "days").endOf("day").format();
+    const openingBlanceColumns = [
+      { key: "id", header: "id" },
+      { key: "accountName", header: "account name" },
+      { key: "accoutType", header: "account type" },
+      { key: "currency", header: "currency" },
+      { key: "balance", header: "balance" },
+    ];
+
+    worksheet.columns = openingBlanceColumns;
+
+    let bankAccounts = await BankAccount.findAll({
+      where: {
+        createdAt: {
+          [Op.gt]: YESTERDAY_START,
+          [Op.lt]: YESTERDAY_END,
+        },
+      },
+    });
+
+
+    bankAccounts.forEach((rate) => {
+      worksheet.addRow(rate);
+    });
+
+    result = await workbook.xlsx.writeBuffer();
+    statusCode = 200;
+  } catch (e) {
+    statusCode = e.response.status;
+    result = {
+      status: false,
+      message: e.response.data.message,
+    };
+  }
+  return reply.status(statusCode).send(result);
+};
+
 // This function will be executed by a CRON JOB daily
 // stores todays exchange rate and opening in the database
 const createOpeningBalanceHandler = async (req, reply) => {
-  const TODAY_START = moment().startOf('day').format();
-  const TODAY_END = moment().endOf('day').format();
+  const TODAY_START = moment().startOf("day").format();
+  const TODAY_END = moment().endOf("day").format();
   try {
     let todayOpeningBalData = {
       today_start: TODAY_START,
@@ -218,7 +261,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
     if (openingBalance) {
       return reply.code(400).send({
         status: false,
-        message: 'Opening Balance Already Exits for today',
+        message: "Opening Balance Already Exits for today",
       });
     }
 
@@ -230,14 +273,14 @@ const createOpeningBalanceHandler = async (req, reply) => {
     if (zoho.data.error) {
       return reply.code(400).send({
         status: false,
-        message: 'Invalid code',
+        message: "Invalid code",
       });
     }
 
     const options = {
       headers: {
-        'Content-Type': ['application/json'],
-        Authorization: 'Bearer ' + zoho.data.access_token,
+        "Content-Type": ["application/json"],
+        Authorization: "Bearer " + zoho.data.access_token,
       },
     };
 
@@ -249,7 +292,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
     if (res.data.error)
       return reply.code(400).send({
         status: false,
-        message: 'Could not fetch exchange rate',
+        message: "Could not fetch exchange rate",
       });
 
     payload = {
@@ -266,7 +309,7 @@ const createOpeningBalanceHandler = async (req, reply) => {
     if (resp.data.error)
       return reply.code(400).send({
         status: false,
-        message: 'Could not fetch bank accounts',
+        message: "Could not fetch bank accounts",
       });
 
     let ngnBalance = 0;
@@ -276,8 +319,8 @@ const createOpeningBalanceHandler = async (req, reply) => {
     for (const [rowNum, inputData] of resp.data.bankaccounts.entries()) {
       // Save into databse
       if (
-        inputData.currency_code === 'USD' ||
-        inputData.currency_code === 'NGN'
+        inputData.currency_code === "USD" ||
+        inputData.currency_code === "NGN"
       ) {
         overdraft = inputData.balance;
         // if bank balance is less than zero then check if there is an overdraft account loan
@@ -304,11 +347,11 @@ const createOpeningBalanceHandler = async (req, reply) => {
           overdraftBalance: overdraft,
         };
 
-        if (inputData.currency_code === 'USD') {
+        if (inputData.currency_code === "USD") {
           usdBalance += overdraft;
         }
 
-        if (inputData.currency_code === 'NGN') {
+        if (inputData.currency_code === "NGN") {
           ngnBalance += overdraft;
         }
 
@@ -327,8 +370,8 @@ const createOpeningBalanceHandler = async (req, reply) => {
 
     result = {
       status: true,
-      message: 'Successfully',
-      data: '',
+      message: "Successfully",
+      data: "",
     };
   } catch (e) {
     result = {
@@ -341,8 +384,8 @@ const createOpeningBalanceHandler = async (req, reply) => {
 };
 
 const createOverdraftHandler = async (req, reply) => {
-  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
-  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
+  const YESTERDAY_START = moment().subtract(1, "days").startOf("day").format();
+  const YESTERDAY_END = moment().subtract(1, "days").endOf("day").format();
   const {
     accountId,
     accountName,
@@ -365,7 +408,7 @@ const createOverdraftHandler = async (req, reply) => {
     if (overdraftExists)
       return reply.code(409).send({
         status: false,
-        message: 'Overdraft account already exist',
+        message: "Overdraft account already exist",
       });
 
     bankAccount = await BankAccount.findOne({
@@ -382,7 +425,7 @@ const createOverdraftHandler = async (req, reply) => {
     if (!bankAccount)
       return reply.code(404).send({
         status: false,
-        message: 'Bank account not found',
+        message: "Bank account not found",
       });
 
     overdraft = await Overdraft.create({
@@ -398,13 +441,13 @@ const createOverdraftHandler = async (req, reply) => {
     if (!overdraft)
       return reply.code(500).send({
         status: false,
-        message: 'Unable to create overdraft account',
+        message: "Unable to create overdraft account",
       });
 
     if (bankAccount.currency !== currency)
       return reply.code(400).send({
         status: false,
-        message: 'Curreny mismtach',
+        message: "Curreny mismtach",
       });
 
     bankBalance = parseFloat(bankAccount.dataValues.balance);
@@ -428,7 +471,7 @@ const createOverdraftHandler = async (req, reply) => {
     if (!bankAccount)
       return reply.code(500).send({
         status: false,
-        message: 'Unable to update bank account',
+        message: "Unable to update bank account",
       });
 
     let res = await BankAccount.findAll({
@@ -444,10 +487,10 @@ const createOverdraftHandler = async (req, reply) => {
     let usdBalance = 0;
 
     res.map(async function (res) {
-      if (res.dataValues.currency === 'USD') {
+      if (res.dataValues.currency === "USD") {
         usdBalance += parseFloat(res.dataValues.overdraftBalance);
       }
-      if (res.dataValues.currency === 'NGN') {
+      if (res.dataValues.currency === "NGN") {
         ngnBalance += parseFloat(res.dataValues.overdraftBalance);
       }
     });
@@ -460,14 +503,14 @@ const createOverdraftHandler = async (req, reply) => {
     if (!openingBalance)
       return reply.code(500).send({
         status: false,
-        message: 'Unable to update opening balance',
+        message: "Unable to update opening balance",
       });
 
     statusCode = 201;
 
     result = {
       status: true,
-      message: 'Overdraft account created successfully',
+      message: "Overdraft account created successfully",
     };
   } catch (e) {
     statusCode = e.response.status;
@@ -480,8 +523,8 @@ const createOverdraftHandler = async (req, reply) => {
 };
 
 const updateOverdraftHandler = async (req, reply) => {
-  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
-  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
+  const YESTERDAY_START = moment().subtract(1, "days").startOf("day").format();
+  const YESTERDAY_END = moment().subtract(1, "days").endOf("day").format();
   const id = req.params.id;
   const { amount } = req.body;
 
@@ -495,7 +538,7 @@ const updateOverdraftHandler = async (req, reply) => {
     if (!overdraft)
       return reply.code(500).send({
         status: false,
-        message: 'Overdraft account not found',
+        message: "Overdraft account not found",
       });
 
     let bankAccount = await BankAccount.findOne({
@@ -511,7 +554,7 @@ const updateOverdraftHandler = async (req, reply) => {
     if (!bankAccount)
       return reply.code(404).send({
         status: false,
-        message: 'Bank account not found',
+        message: "Bank account not found",
       });
 
     // update opening balance
@@ -527,7 +570,7 @@ const updateOverdraftHandler = async (req, reply) => {
     if (!openingBalance)
       return reply.code(404).send({
         status: false,
-        message: 'Opening Balance not found',
+        message: "Opening Balance not found",
       });
 
     let overdraftDiff;
@@ -540,14 +583,14 @@ const updateOverdraftHandler = async (req, reply) => {
         parseFloat(bankAccount.dataValues.overdraftBalance) +
         parseFloat(overdraftDiff);
 
-      if (bankAccount.dataValues.currency === 'NGN') {
+      if (bankAccount.dataValues.currency === "NGN") {
         dollar = openingBalance.dataValues.dollar;
         naira =
           parseFloat(openingBalance.dataValues.naira) +
           parseFloat(overdraftDiff);
       }
 
-      if (bankAccount.dataValues.currency === 'USD') {
+      if (bankAccount.dataValues.currency === "USD") {
         naira = openingBalance.dataValues.naira;
         dollar =
           parseFloat(openingBalance.dataValues.dollar) +
@@ -577,7 +620,7 @@ const updateOverdraftHandler = async (req, reply) => {
       if (!bankAccount)
         return reply.code(500).send({
           status: false,
-          message: 'Unable to update bank account',
+          message: "Unable to update bank account",
         });
 
       let res = await BankAccount.findAll({
@@ -593,10 +636,10 @@ const updateOverdraftHandler = async (req, reply) => {
       let usdBalance = 0;
 
       res.map(async function (res) {
-        if (res.dataValues.currency === 'USD') {
+        if (res.dataValues.currency === "USD") {
           usdBalance += parseFloat(res.dataValues.overdraftBalance);
         }
-        if (res.dataValues.currency === 'NGN') {
+        if (res.dataValues.currency === "NGN") {
           ngnBalance += parseFloat(res.dataValues.overdraftBalance);
         }
       });
@@ -609,7 +652,7 @@ const updateOverdraftHandler = async (req, reply) => {
       if (!openingBalance)
         return reply.code(500).send({
           status: false,
-          message: 'Unable to update opening balance',
+          message: "Unable to update opening balance",
         });
     }
 
@@ -620,14 +663,14 @@ const updateOverdraftHandler = async (req, reply) => {
     if (!overdraft)
       return reply.code(500).send({
         status: false,
-        message: 'Unable to update overdraft',
+        message: "Unable to update overdraft",
       });
 
     statusCode = 200;
 
     result = {
       status: true,
-      message: 'Overdraft account updated successfully',
+      message: "Overdraft account updated successfully",
     };
   } catch (e) {
     statusCode = e.code;
@@ -640,8 +683,8 @@ const updateOverdraftHandler = async (req, reply) => {
 };
 
 const deleteOverdraftHandler = async (req, reply) => {
-  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
-  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
+  const YESTERDAY_START = moment().subtract(1, "days").startOf("day").format();
+  const YESTERDAY_END = moment().subtract(1, "days").endOf("day").format();
   const id = req.params.id;
 
   try {
@@ -652,7 +695,7 @@ const deleteOverdraftHandler = async (req, reply) => {
     if (!overdraft)
       return reply.code(500).send({
         status: false,
-        message: 'Overdraft account not found',
+        message: "Overdraft account not found",
       });
 
     let bankAccount = await BankAccount.findOne({
@@ -668,7 +711,7 @@ const deleteOverdraftHandler = async (req, reply) => {
     if (!bankAccount)
       return reply.code(404).send({
         status: false,
-        message: 'Bank account not found',
+        message: "Bank account not found",
       });
 
     let openingBalance = await OpeningBalance.findOne({
@@ -683,7 +726,7 @@ const deleteOverdraftHandler = async (req, reply) => {
     if (!openingBalance)
       return reply.code(404).send({
         status: false,
-        message: 'Opening Balance not found',
+        message: "Opening Balance not found",
       });
 
     await overdraft.destroy();
@@ -695,7 +738,7 @@ const deleteOverdraftHandler = async (req, reply) => {
     if (!bankAccount)
       return reply.code(500).send({
         status: false,
-        message: 'Unable to update bank account',
+        message: "Unable to update bank account",
       });
 
     let res = await BankAccount.findAll({
@@ -711,10 +754,10 @@ const deleteOverdraftHandler = async (req, reply) => {
     let usdBalance = 0;
 
     res.map(async function (res) {
-      if (res.dataValues.currency === 'USD') {
+      if (res.dataValues.currency === "USD") {
         usdBalance += parseFloat(res.dataValues.overdraftBalance);
       }
-      if (res.dataValues.currency === 'NGN') {
+      if (res.dataValues.currency === "NGN") {
         ngnBalance += parseFloat(res.dataValues.overdraftBalance);
       }
     });
@@ -727,14 +770,14 @@ const deleteOverdraftHandler = async (req, reply) => {
     if (!openingBalance)
       return reply.code(500).send({
         status: false,
-        message: 'Unable to update opening balance',
+        message: "Unable to update opening balance",
       });
 
     statusCode = 200;
 
     result = {
       status: true,
-      message: 'Overdraft deleted successfully',
+      message: "Overdraft deleted successfully",
     };
   } catch (e) {
     statusCode = e.code;
@@ -754,7 +797,7 @@ const getOverdraftHandler = async (req, reply) => {
 
     result = {
       status: true,
-      message: 'Overdrafts retrieved successfully',
+      message: "Overdrafts retrieved successfully",
       data: overdrafts,
     };
   } catch (e) {
@@ -775,4 +818,5 @@ module.exports = {
   updateOverdraftHandler,
   deleteOverdraftHandler,
   getOverdraftHandler,
+  downloadOpeningBalance,
 };

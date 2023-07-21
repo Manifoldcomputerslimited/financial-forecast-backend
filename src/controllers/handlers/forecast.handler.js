@@ -9,6 +9,10 @@ const {
   createOpeningBalance,
   createBankAccounts,
   getTodayDayOpeningBalance,
+  fetchAllInvoiceForecast,
+  fetchAllBillForecast,
+  fetchAllPurchaseForecast,
+  fetchAllSaleForecast,
 } = require("../../helpers/dbQuery");
 
 const InvoiceForecast = db.invoiceForecasts;
@@ -171,8 +175,8 @@ const resyncHandler = async (req, reply) => {
 };
 
 const bankAccountsHandler = async (req, reply) => {
-  const YESTERDAY_START = moment().subtract(1, 'days').startOf('day').format();
-  const YESTERDAY_END = moment().subtract(1, 'days').endOf('day').format();
+  const YESTERDAY_START = moment().subtract(1, "days").startOf("day").format();
+  const YESTERDAY_END = moment().subtract(1, "days").endOf("day").format();
   try {
     let bankAccounts = await BankAccount.findAll({
       where: {
@@ -187,7 +191,7 @@ const bankAccountsHandler = async (req, reply) => {
 
     result = {
       status: true,
-      message: 'Opening bank accounts fetched successfully',
+      message: "Opening bank accounts fetched successfully",
       data: bankAccounts,
     };
   } catch (e) {
@@ -205,8 +209,11 @@ const downloadOpeningBalance = async (req, reply) => {
   try {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Opening Balance");
-    const YESTERDAY_START = moment().subtract(1, "days").startOf("day").format();
-  const YESTERDAY_END = moment().subtract(1, "days").endOf("day").format();
+    const YESTERDAY_START = moment()
+      .subtract(1, "days")
+      .startOf("day")
+      .format();
+    const YESTERDAY_END = moment().subtract(1, "days").endOf("day").format();
     const openingBlanceColumns = [
       { key: "id", header: "id" },
       { key: "accountName", header: "account name" },
@@ -225,7 +232,6 @@ const downloadOpeningBalance = async (req, reply) => {
         },
       },
     });
-
 
     bankAccounts.forEach((rate) => {
       worksheet.addRow(rate);
@@ -810,6 +816,107 @@ const getOverdraftHandler = async (req, reply) => {
   return reply.status(statusCode).send(result);
 };
 
+const getChartDataHandler = async (req, reply) => {
+  try {
+    const { forecastNumber, forecastPeriod } = req.body;
+    const userId = req.user.id;
+
+    const TODAY_START = moment().startOf("day").format();
+    const TODAY_END = moment().endOf("day").format();
+
+    let payload = {
+      userId: userId,
+      forecastNumber: forecastNumber,
+      forecastPeriod: forecastPeriod,
+      today_start: TODAY_START,
+      today_end: TODAY_END,
+    };
+
+    const forecastMonths = [];
+    const forecastNairaChartInflow = [];
+    const forecastNairaChartOutflow = [];
+    const forecastDollarChartInflow = [];
+    const forecastDollarChartOutflow = [];
+
+    let purchaseForecasts = await fetchAllPurchaseForecast({ payload });
+
+    let saleForecasts = await fetchAllSaleForecast({ payload });
+
+    // get invoice forecast where forecastType
+    let invoiceForecasts = await fetchAllInvoiceForecast({ payload });
+
+    let billForecasts = await fetchAllBillForecast({ payload });
+
+    for (let i = 0; i < forecastNumber; i++) {
+      const month = moment().add(i, "months").format("MMMM");
+      forecastMonths.push(month);
+    }
+
+    for (i = 0; i < invoiceForecasts.rows.length; i++) {
+      //INFLOW TOTAL
+      let invoiceForeacastClosingBalance =
+        invoiceForecasts.rows[i].currency === "NGN"
+          ? invoiceForecasts.rows[i].nairaClosingBalance
+          : invoiceForecasts.rows[i].dollarClosingBalance;
+      let saleForecastClosingBalance =
+        saleForecasts.rows[i].currency === "NGN"
+          ? saleForecasts.rows[i].nairaClosingBalance
+          : saleForecasts.rows[i].dollarClosingBalance;
+
+      // OUTFLOW TOTAL
+      let billForeacastClosingBalance =
+        billForecasts.rows[i].currency === "NGN"
+          ? billForecasts.rows[i].nairaClosingBalance
+          : billForecasts.rows[i].dollarClosingBalance;
+      let purchaseForecastClosingBalance =
+        purchaseForecasts.rows[i].currency === "NGN"
+          ? purchaseForecasts.rows[i].nairaClosingBalance
+          : purchaseForecasts.rows[i].dollarClosingBalance;
+
+      if (invoiceForecasts.rows[i].currency === "NGN") {
+        forecastNairaChartInflow.push(
+          (parseFloat(invoiceForeacastClosingBalance) +
+            parseFloat(saleForecastClosingBalance)).toFixed(2)
+        );
+        forecastNairaChartOutflow.push(
+          (parseFloat(billForeacastClosingBalance) +
+            parseFloat(purchaseForecastClosingBalance)).toFixed(2)
+        );
+       
+      } else {
+        
+        forecastDollarChartInflow.push(
+          (parseFloat(invoiceForeacastClosingBalance) +
+            parseFloat(saleForecastClosingBalance)).toFixed(2)
+        );
+        forecastDollarChartOutflow.push(
+          (parseFloat(billForeacastClosingBalance) +
+            parseFloat(purchaseForecastClosingBalance)).toFixed(2)
+        );
+      }
+    }
+
+    statusCode = 200;
+    result = {
+      status: true,
+      data: {
+        "months": forecastMonths,
+        "forecastNairaInflow": forecastNairaChartInflow,
+        "forecastNairaOutflow": forecastNairaChartOutflow,
+        "forecastDollarInflow": forecastDollarChartInflow,
+        "forecastDollarOutflow": forecastDollarChartOutflow,
+      },
+    };
+  } catch (e) {
+    statusCode = e.response.status;
+    result = {
+      status: false,
+      message: e.message,
+    };
+  }
+  return reply.status(statusCode).send(result);
+};
+
 module.exports = {
   resyncHandler,
   bankAccountsHandler,
@@ -818,5 +925,6 @@ module.exports = {
   updateOverdraftHandler,
   deleteOverdraftHandler,
   getOverdraftHandler,
+  getChartDataHandler,
   downloadOpeningBalance,
 };

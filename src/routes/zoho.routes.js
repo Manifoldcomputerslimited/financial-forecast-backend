@@ -60,9 +60,17 @@ const getOverdraftsOpts = {
   handler: forecastController.getOverdraftHandler,
 };
 
+const getChartDataOpts = {
+  handler: forecastController.getChartDataHandler,
+};
+
 const deleteOverdraftOpts = {
   handler: forecastController.deleteOverdraftHandler,
 };
+
+const downloadOpeningBalanceOpts = {
+  handler: forecastController.downloadOpeningBalance,
+}
 
 const zohoRoutes = async (fastify, options) => {
   fastify.get("/zoho/opening/balance/create", createOpeningbalanceOpts);
@@ -85,6 +93,12 @@ const privateRoutes = async (fastify, options) => {
     ...updateOverdraftOpts,
   });
 
+  //download opening balance
+  fastify.post("/zoho/bank/opening-balance/download", {
+    preHandler: fastify.auth([verifyToken]),
+    ...downloadOpeningBalanceOpts,
+  })
+
   // delete overdraft
   fastify.delete("/zoho/overdraft/:id", {
     preHandler: fastify.auth([verifyToken]),
@@ -94,6 +108,11 @@ const privateRoutes = async (fastify, options) => {
   fastify.get("/zoho/overdraft", {
     preHandler: fastify.auth([verifyToken]),
     ...getOverdraftsOpts,
+  });
+
+  fastify.post("/zoho/chart", {
+    preHandler: fastify.auth([verifyToken]),
+    ...getChartDataOpts,
   });
 
   fastify.get("/zoho/bank/accounts", {

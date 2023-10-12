@@ -2044,7 +2044,7 @@ const generateReportHandler = async (req, reply) => {
         totalNairaOutflow;
       // dollarNetWorkingCapital
       let totalDollarNetWorkingCapital =
-        parseFloat(initialOpeningBalance.openingBalance) +
+        parseFloat(initialOpeningBalance.dollarOpeningBalance) +
         totalDollarInflow -
         totalDollarOutflow;
 

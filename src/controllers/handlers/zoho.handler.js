@@ -520,7 +520,7 @@ const getVendorPayments = async (
       paymentId: e.payment_id,
       vendorId: e.vendor_id,
       vendorName: e.vendor_name,
-      billNumbers: e.bill_numbers,
+      billNumbers: e.bill_numbers.length > 15 ? e.bill_numbers.substring(0, 15) + "..." : e.bill_numbers,
       referenceNumber: e.reference_number,
       date: e.date,
       currencyCode: e.currency_code,
